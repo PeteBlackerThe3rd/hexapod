@@ -12,6 +12,8 @@ kinematic function which returns the locations of all joints as well as the toe 
 --====O=======O====|       Y----X
                    |
 
+Note: X axis points into the screen
+
  Joint angle definitions
 -------------------------
 
@@ -19,7 +21,7 @@ Leg zero pose, viewed from the side (up is up and down is down!):
 
       j3      j1   j0
  ^-ve    ^-ve      |
---====O=======O====|  (+ve j0 rotation moved the leg out of the screen)
+--====O=======O====|  (+ve j0 rotation moves the leg out of the screen)
  ,+ve    ,+ve      |
 
 """
@@ -41,8 +43,18 @@ class LegKinematics:
     self.calf_length = 52.162e-3
 
     # define joint limits
-    self.joint_low_limits = np.array([np.deg2rad(-30), np.deg2rad(-90), np.deg2rad(-90)])
-    self.joint_high_limits = np.array([np.deg2rad(30), np.deg2rad(90), np.deg2rad(90)])
+    self.joint_low_limits = np.array([np.deg2rad(-30), np.deg2rad(-80), np.deg2rad(0)])
+    self.joint_high_limits = np.array([np.deg2rad(30), np.deg2rad(80), np.deg2rad(80)])
+
+  def compute_joint_limit_margin(self, joint_angles):
+    """
+    Computes the smallest angle between any of the joint angles given and their
+    respective limits. Used as an approximate metric of the distance to the
+    edge of the working volume.
+    :param joint_angles: np.ndarray of three joint angles
+    :return: scalar of the margin in radians
+    """
+    return min(np.min(joint_angles - self.joint_low_limits), np.min(self.joint_high_limits - joint_angles))
 
   def forwards(self, joint_angles):
     """
@@ -132,7 +144,7 @@ class LegKinematics:
       ))
 
     # use atan2 and cosine rule to compute thigh angle and check its in valid range
-    tri_angle = np.arcsin(leg_horizontal_reach / leg_diagonal_reach)
+    tri_angle = np.arctan2(-toe_z, leg_horizontal_reach)
     shoulder_partial_angle = np.arccos(
       (self.thigh_length**2 + leg_diagonal_reach**2 - self.calf_length**2) /
       (2 * self.thigh_length * leg_diagonal_reach)
