@@ -35,14 +35,14 @@ class LegKinematics:
 
   def __init__(self):
 
-    # define link lengths
+    # define link lengths in meters
     self.hip_length = 26e-3
     self.thigh_length = 48.87e-3
     self.calf_length = 52.162e-3
 
     # define joint limits
-    self.joint_low_limits = np.array([-np.pi/2, -np.pi/2, np.deg2rad(-60)])
-    self.joint_high_limits = np.array([np.pi/2, np.pi/2, np.deg2rad(60)])
+    self.joint_low_limits = np.array([np.deg2rad(-30), np.deg2rad(-90), np.deg2rad(-90)])
+    self.joint_high_limits = np.array([np.deg2rad(30), np.deg2rad(90), np.deg2rad(90)])
 
   def forwards(self, joint_angles):
     """
@@ -66,7 +66,7 @@ class LegKinematics:
     ) * np.sign(joint_angles[2])
 
     # now use hip and thigh rotation to determine toe position.
-    z = np.sin(joint_angles[1] + combined_leg_angle) * combined_leg_length
+    z = -np.sin(joint_angles[1] + combined_leg_angle) * combined_leg_length
     y_pre_rotation = (np.cos(joint_angles[1] + combined_leg_angle) * combined_leg_length) + self.hip_length
     x = np.sin(joint_angles[0]) * y_pre_rotation
     y = np.cos(joint_angles[0]) * y_pre_rotation
@@ -81,21 +81,21 @@ class LegKinematics:
     :return: dictionary of labelled positions in 3 element numpy.arrays in meters
     """
     positions = {"joint_0": np.zeros((3,)),
-                 "joint_1": np.array([self.hip_length, self.hip_length, 0])}
+                 "joint_1": np.array([0, self.hip_length, 0])}
 
     knee_relative = np.array([0,
-                              np.sin(joint_angles[1]) * self.thigh_length,
-                              np.cos(joint_angles[1]) * self.thigh_length])
+                              np.cos(joint_angles[1]) * self.thigh_length,
+                              -np.sin(joint_angles[1]) * self.thigh_length])
     positions["joint_2"] = positions["joint_1"] + knee_relative
 
     toe_relative = np.array([0,
-                             np.sin(joint_angles[1] + joint_angles[2]) * self.calf_length,
-                             np.cos(joint_angles[1] + joint_angles[2]) * self.calf_length])
+                             np.cos(joint_angles[1] + joint_angles[2]) * self.calf_length,
+                             -np.sin(joint_angles[1] + joint_angles[2]) * self.calf_length])
     positions["toe"] = positions["joint_2"] + toe_relative
 
     for key in positions.keys():
       positions[key][0] = np.sin(joint_angles[0]) * positions[key][1]
-      positions[key][1] = np.sin(joint_angles[0]) * positions[key][1]
+      positions[key][1] = np.cos(joint_angles[0]) * positions[key][1]
 
     return positions
 
@@ -112,7 +112,7 @@ class LegKinematics:
 
     # First compute the orthogonal edges the right angle triangle that the calf and thigh
     # links need to reach along the diagonal of
-    leg_horizontal_reach = np.linalg.norm(toe_position[:2]) - self.hip_length
+    leg_horizontal_reach = np.linalg.norm(-toe_position[:2]) - self.hip_length
     leg_vertical_reach = toe_z
     leg_diagonal_reach = np.linalg.norm(np.array([leg_horizontal_reach, leg_vertical_reach]))
 
@@ -126,7 +126,10 @@ class LegKinematics:
       (2 * self.calf_length * self.thigh_length)
     )
     if knee_angle > self.joint_high_limits[2]:
-      raise NoKinematicSolution("Knee angle greater than limit.")
+      raise NoKinematicSolution("Knee angle (%f deg) greater than high limit (%f def)." % (
+        np.rad2deg(knee_angle),
+        np.rad2deg(self.joint_high_limits[2])
+      ))
 
     # use atan2 and cosine rule to compute thigh angle and check its in valid range
     tri_angle = np.arcsin(leg_horizontal_reach / leg_diagonal_reach)
@@ -134,7 +137,7 @@ class LegKinematics:
       (self.thigh_length**2 + leg_diagonal_reach**2 - self.calf_length**2) /
       (2 * self.thigh_length * leg_diagonal_reach)
     )
-    shoulder_angle = shoulder_partial_angle + tri_angle
+    shoulder_angle = tri_angle - shoulder_partial_angle
     if shoulder_angle < self.joint_low_limits[1] or shoulder_angle > self.joint_high_limits[1]:
       raise NoKinematicSolution("Shoulder angle is out of range.")
 
