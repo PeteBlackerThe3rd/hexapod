@@ -22,9 +22,6 @@ class PLYFile:
     """
     :param filename:
     :return:
-
-
-
     """
     header = "ply\n"
     header += "format binary_little_endian 1.0\n"
@@ -32,8 +29,7 @@ class PLYFile:
     header += "property float x\nproperty float y\nproperty float z\n"
     header += "property uchar red\nproperty uchar green\nproperty uchar blue\n"
     header += "element edge %d\n" % len(self.lines)
-    header += "property int vertex1\nproperty int vertex2\nproperty uchar red\n" \
-              "property uchar green\nproperty uchar blue\n"
+    header += "property int vertex1\nproperty int vertex2\n"
     header += "end_header\n"
 
     file = open(filename, "wb")
@@ -56,4 +52,4 @@ class PLYFile:
     self.vertices.append(np.array(p2))
     self.vertex_colors.append((np.array([r, g, b])))
     self.vertex_colors.append((np.array([r, g, b])))
-    # self.lines.append((v1_idx, v1_idx+1))
+    self.lines.append((v1_idx, v1_idx+1))
