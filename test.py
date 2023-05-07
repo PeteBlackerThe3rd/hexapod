@@ -1,7 +1,7 @@
 import numpy as np
 from leg_kinematics import LegKinematics as Kin, NoKinematicSolution
 from ply_debug_file import PLYFile
-
+from translate_position import translate_datum
 
 leg_kin = Kin()
 
@@ -65,32 +65,45 @@ def save_toe_working_area_plot(filename, hip_heights):
 
   plot.save(filename)
 
+def circle():
+  radius = 0.010
+  for idx, angle in enumerate(np.linspace(0, np.deg2rad(360), 720)):
+    goal_toe_pos = np.array([np.sin(angle) * radius,
+                             (np.cos(angle) * radius) + 0.090,
+                             -0.065])
+    joint_angles = leg_kin.inverse(goal_toe_pos)
+    yield idx, joint_angles
 
+def circle_translated():
+  radius = 0.01
+  for idx, angle in enumerate(np.linspace(0, np.deg2rad(360), 720)):
+    goal_toe_pos = np.array([np.sin(angle) * radius+0.11, 0.18,
+                             (np.cos(angle) * radius)])
+    goal_toe_pos = translate_datum(goal_toe_pos, 0)
+    joint_angles = leg_kin.inverse(goal_toe_pos)
+    yield idx, joint_angles
+
+def linear_translated():
+  for idx, pos in enumerate(np.linspace(-0.0075, 0.0075, 50)):
+    goal_toe_pos = np.array([0.15, pos + 0.15, -0.03])
+    goal_toe_pos = translate_datum(goal_toe_pos, 0)
+    joint_angles = leg_kin.inverse(goal_toe_pos)
+    yield idx, joint_angles
+    
 def main():
 
   # save_toe_working_area_plot("test_plot.ply", np.linspace(-0.10, -0.02, 12))
-
   ply_debug = PLYFile()
-  # compute joint trajectory sweeping the toe position in a circle
-  radius = 0.018
-  print("index, joint_0 rads, join_1 rads, join_2 rads")
-  for idx, angle in enumerate(np.linspace(0, np.deg2rad(360), 200)):
-    goal_toe_pos = np.array([np.sin(angle) * radius,
-                             (np.cos(angle) * radius) + 0.08,
-                             -0.07])
+  # compute joint trajectory
 
-    joint_angles = leg_kin.inverse(goal_toe_pos)
-    print("%d, %f, %f, %f" % (idx, joint_angles[0], joint_angles[1], joint_angles[2]))
-
-    # leg_positions = leg_kin.forwards_all_joints(joint_angles)
-    # print("[%f] joint angles %s" % (angle, np.rad2deg(joint_angles)))
-    # print("joint_0 %s" % leg_positions["joint_0"])
-    # print("joint_1 %s" % leg_positions["joint_1"])
-    # print("joint_2 %s" % leg_positions["joint_2"])
-    # print("toe %s" % leg_positions["toe"])
-    # print("")
-
-    add_joint_config_to_debug_file(ply_debug, joint_angles)
+  with open("leg_trajectory.csv", 'w') as output_file:
+    print("index, joint_0 rads, joint_1 rads, joint_2 rads")
+    output_file.write("index, joint_0 rads, joint_1 rads, joint_2 rads\n")
+    #for idx, angle in enumerate(np.linspace(0, np.deg2rad(360), 720)):
+    for idx, joint_angles in circle():
+      print("%d, %f, %f, %f" % (idx, joint_angles[0], joint_angles[1], joint_angles[2]))
+      output_file.write(','.join((str(idx), str(joint_angles[0]), str(joint_angles[1]), str(joint_angles[2])))+'\n')
+      add_joint_config_to_debug_file(ply_debug, joint_angles)
 
   ply_debug.save("leg_trajectory.ply")
 
