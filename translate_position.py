@@ -17,3 +17,18 @@ def translate_datum(point, leg):
     new_point = np.matmul(R, point) + shift
 
     return new_point
+
+def inverse_translate_datum(point, leg):
+    shift = np.array(LEG_PIVOTS)
+    theta = np.deg2rad(LEG_ANGLES[leg])
+
+    # Compute the rotation matrix
+    # z axis only
+    R = np.array([[cos(theta), -sin(theta), 0], [sin(theta), cos(theta), 0], [0, 0, 1]])
+    #calculate the inverse matrix
+    R = np.linalg.inv(R)
+    point -= shift
+    # Translate the point to the new datum
+    new_point = np.matmul(R, point)
+
+    return new_point
