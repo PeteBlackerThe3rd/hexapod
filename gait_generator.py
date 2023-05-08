@@ -73,7 +73,7 @@ class Trajectory:
     return new_traj
 
 
-def gen_walking_toe_trajectory():
+def gen_walking_toe_trajectory(floor_distance=1.4, lift_height=0.4, floor_duration=0.5, save=False):
   """
   Use cubic bezier splines to create a trajectory where the toe
   smoothly transitions from moving on the ground to lifting
@@ -85,23 +85,22 @@ def gen_walking_toe_trajectory():
   floor_traj = Trajectory()
   lift_traj = Trajectory()
 
-  step_start = np.array([-0.7, 0])
-  step_end = np.array([0.7, 0])
-  step_start_control = np.array([-1.1, 0])
-  step_end_control = np.array([1.1, 0])
-  lift = np.array([0, 0.4])
-  lift_start_control = np.array([0.7, 0.4])
-  lift_end_control = np.array([-0.7, 0.4])
+  step_start = np.array([-floor_distance*0.5, 0])
+  step_end = np.array([floor_distance*0.5, 0])
+  step_start_control = np.array([-floor_distance*0.75, 0])
+  step_end_control = np.array([floor_distance*0.75, 0])
+  lift = np.array([0, lift_height])
+  lift_start_control = np.array([floor_distance*0.5, lift_height])
+  lift_end_control = np.array([-floor_distance*0.5, lift_height])
 
-  floor_duration = 0.50
-  lift_duration = 0.50
+  lift_duration = 1 - floor_duration
 
   # create linear floor trajectory so robot moves at constant speed
   for ratio in np.linspace(0, 1, 100):
     floor_traj.append(ratio * floor_duration, linear_bezier(step_start, step_end, ratio))
   floor_vel = np.linalg.norm(step_end - step_start) / floor_duration
 
-  print("Floor traj duration = %f" % floor_duration)
+  # print("Floor traj duration = %f" % floor_duration)
 
   # create the lift trajectory where time = distance / floor_vel
   dist_sum = 0
@@ -119,7 +118,7 @@ def gen_walking_toe_trajectory():
     last_p = next_p
 
   lift_initial_duration = lift_traj.points[-1].time
-  print("initial lift trajectory duration = %f" % lift_initial_duration)
+  # print("initial lift trajectory duration = %f" % lift_initial_duration)
 
   # alter duration of lift trajectory so it is exactly 0.45 using a sine wave to preserve initial and final velocities
   duration_delta = lift_duration - lift_initial_duration
@@ -128,29 +127,58 @@ def gen_walking_toe_trajectory():
   for point in lift_traj.points:
     point.time += ((np.cos(np.pi + (point.time * time_scale)) + 1) / 2) * duration_delta
 
-  lift_final_duration = lift_traj.points[-1].time
-  print("final lift trajectory duration = %f" % lift_final_duration)
+  # lift_final_duration = lift_traj.points[-1].time
+  # print("final lift trajectory duration = %f" % lift_final_duration)
 
   floor_traj.extend(lift_traj)
-
   even_traj = floor_traj.interpolate_even_timesteps(200)
 
-  debug = PLYFile()
+  if save:
+    debug = PLYFile()
+    for point in even_traj.points:
+      debug.add_point(np.array([point.time + 0, point.pos[0], point.pos[1]]), 255, 255, 0)
+      debug.add_point(np.array([point.time + 1, point.pos[0], point.pos[1]]), 255, 255, 0)
+      debug.add_point(np.array([point.time + 2, point.pos[0], point.pos[1]]), 255, 255, 0)
+    debug.save("toe_trajectory.ply")
 
-  # for point in floor_traj.points:
-  #   debug.add_point(np.array([point.time, point.pos[0], point.pos[1]]), 255, 0, 0)
-
-  for point in even_traj.points:
-    debug.add_point(np.array([point.time + 0, point.pos[0], point.pos[1]]), 255, 255, 0)
-    debug.add_point(np.array([point.time + 1, point.pos[0], point.pos[1]]), 255, 255, 0)
-    debug.add_point(np.array([point.time + 2, point.pos[0], point.pos[1]]), 255, 255, 0)
-
-  # for point in lift_traj.points:
-  #   debug.add_point(np.array([point.time + floor_traj.points[-1].time, point.pos[0], point.pos[1]]), 255, 255, 0)
-
-  debug.save("toe_trajectory.ply")
   return even_traj
 
 
+def cost_fn(state_vector):
+  """
+  Cost function of the walking gait optimisation.
+  returns the distance moved forwards or None is no kinematic solution exists
+  :param state_vector:
+  :return: cost value
+  """
+  ride_height, floor_length, centre_leg_dist_x, offset_leg_dist_x, offset_left_dist_y = state_vector
+
+  # create toe trajectory based upon ride height and floor length
+  toe_traj = gen_walking_toe_trajectory(floor_distance=1.4, lift_height=1, floor_duration=0.5)
+
+  # check kinematic solutions exist for whole trajectory for both leg classes
+  for toe_p in toe_traj.points:
+
+
+
+def optimise_walking_gait():
+
+  # define seed values
+  ride_height = 0.04
+  floor_length = 0.01
+  centre_leg_dist_x = 0.18
+  offset_leg_dist_x = 0.18 * 0.66
+  offset_left_dist_y = 0.18 * 0.33
+  init_x = np.array([ride_height,
+                     floor_length,
+                     centre_leg_dist_x,
+                     offset_leg_dist_x,
+                     offset_left_dist_y])
+
+  init_std_devs = np.array([0.01, 0.005, 0.01, 0.01, 0.01])
+  try_limit = 200
+  initial_cost = cost_fn(init_x)
+
+
 if __name__ == "__main__":
-  gen_walking_toe_trajectory()
+  gen_walking_toe_trajectory(floor_distance=1.4, lift_height=1, floor_duration=0.5, save=True)
