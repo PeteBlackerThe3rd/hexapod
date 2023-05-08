@@ -1,10 +1,14 @@
 import numpy as np
+import math
 from leg_kinematics import LegKinematics as Kin, NoKinematicSolution
 from ply_debug_file import PLYFile
-from translate_position import translate_datum
+from translate_position import translate_datum, inverse_translate_datum
+
+from robot import robot
 
 leg_kin = Kin()
 
+hexy = robot()
 
 def add_joint_config_to_debug_file(file, joint_angles):
   leg_positions = leg_kin.forwards_all_joints(joint_angles)
@@ -89,21 +93,41 @@ def linear_translated():
     goal_toe_pos = translate_datum(goal_toe_pos, 0)
     joint_angles = leg_kin.inverse(goal_toe_pos)
     yield idx, joint_angles
-    
-def main():
 
+def initialise_robot():
+  """
+  Sets all hip joint positions to zero and all knee and ankle joints to 45 degrees
+  Code is more a test of the funtions rather than useful
+  """
+  leg_neutral_toe_position = leg_kin.forwards((0,math.pi/4, math.pi/4))
+  for leg in range(0,6):
+    print("------------------------------------------------------------")
+    leg_neutral_toe_position = leg_kin.forwards((0,math.pi/4, math.pi/4))
+    joint_angles = leg_kin.inverse(leg_neutral_toe_position)
+    print(leg_neutral_toe_position)
+    p = inverse_translate_datum(leg_neutral_toe_position, leg)
+    hexy.set_leg(joint_angles, leg)
+    print(p)
+    print(translate_datum(p, leg))
+  hexy.send()
+
+def main():
   # save_toe_working_area_plot("test_plot.ply", np.linspace(-0.10, -0.02, 12))
   ply_debug = PLYFile()
   # compute joint trajectory
 
+  initialise_robot()
+  
   with open("leg_trajectory.csv", 'w') as output_file:
     print("index, joint_0 rads, joint_1 rads, joint_2 rads")
     output_file.write("index, joint_0 rads, joint_1 rads, joint_2 rads\n")
     #for idx, angle in enumerate(np.linspace(0, np.deg2rad(360), 720)):
-    for idx, joint_angles in circle():
+    for idx, joint_angles in circle_translated():
       print("%d, %f, %f, %f" % (idx, joint_angles[0], joint_angles[1], joint_angles[2]))
       output_file.write(','.join((str(idx), str(joint_angles[0]), str(joint_angles[1]), str(joint_angles[2])))+'\n')
       add_joint_config_to_debug_file(ply_debug, joint_angles)
+      hexy.set_leg(joint_angles, 0)
+      hexy.send()
 
   ply_debug.save("leg_trajectory.ply")
 
