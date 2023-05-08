@@ -166,7 +166,8 @@ def cost_fn(state_vector, debug_filename=None):
   :param debug_filename
   :return: cost value
   """
-  ride_height, floor_length, centre_leg_dist_x, offset_leg_dist_x, offset_left_dist_y = state_vector
+  ride_height, floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
+      rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
   toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5)
@@ -179,30 +180,37 @@ def cost_fn(state_vector, debug_filename=None):
   failed = False
   for toe_p in toe_traj.points:
     centre_toe_p = np.array([centre_leg_dist_x, toe_p.pos[0], toe_p.pos[1] - ride_height])
-    offset_toe_p = np.array([offset_leg_dist_x, toe_p.pos[0] + offset_left_dist_y, toe_p.pos[1] - ride_height])
+    front_toe_p = np.array([front_leg_dist_x, toe_p.pos[0] + front_left_dist_y, toe_p.pos[1] - ride_height])
+    rear_toe_p = np.array([rear_leg_dist_x, toe_p.pos[0] + rear_left_dist_y, toe_p.pos[1] - ride_height])
 
+    front_leg_p = translate_datum(front_toe_p, 0)
     centre_leg_p = translate_datum(centre_toe_p, 1)
-    offset_leg_p = translate_datum(offset_toe_p, 0)
+    rear_leg_p = translate_datum(rear_toe_p, 2)
     try:
       kin.inverse(centre_leg_p)
       if debug_filename is not None:
         debug_file.add_point(centre_toe_p, 255, 255, 255)
-        # debug_file.add_point(centre_leg_p, 255, 255, 0)
     except NoKinematicSolution:
       if debug_filename is not None:
         debug_file.add_point(centre_toe_p, 255, 0, 0)
-        # debug_file.add_point(centre_leg_p, 128, 0, 0)
       failed = True
 
     try:
-      kin.inverse(offset_leg_p)
+      kin.inverse(front_leg_p)
       if debug_filename is not None:
-        debug_file.add_point(offset_toe_p, 255, 255, 255)
-        # debug_file.add_point(offset_leg_p, 255, 255, 0)
+        debug_file.add_point(front_toe_p, 255, 255, 255)
     except NoKinematicSolution:
       if debug_filename is not None:
-        debug_file.add_point(offset_toe_p, 255, 0, 0)
-        # debug_file.add_point(offset_leg_p, 128, 0, 0)
+        debug_file.add_point(front_toe_p, 255, 0, 0)
+      failed = True
+
+    try:
+      kin.inverse(rear_leg_p)
+      if debug_filename is not None:
+        debug_file.add_point(rear_toe_p, 255, 255, 255)
+    except NoKinematicSolution:
+      if debug_filename is not None:
+        debug_file.add_point(rear_toe_p, 255, 0, 0)
       failed = True
 
   if debug_filename is not None:
@@ -221,10 +229,15 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
   :param debug_filename
   :return: cost value
   """
-  ride_height, floor_length, centre_leg_dist_x, offset_leg_dist_x, offset_left_dist_y = state_vector
+  ride_height, floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
+      rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
   toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5)
+
+  red = [255, 0, 0, 128, 0, 0]
+  green = [0, 255, 0, 0, 128, 0]
+  blue = [0, 0, 255, 0, 0, 128]
 
   traj_length = len(toe_traj.points)
   half_length = traj_length // 2
@@ -242,35 +255,37 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
 
   for idx, toe_p in enumerate(toe_traj.points):
     idx_opp = (idx + half_length) % traj_length
-    leg_toe_trajectories[0][idx, :] = [offset_leg_dist_x, toe_p.pos[0] + offset_left_dist_y, toe_p.pos[1] - ride_height]
+    leg_toe_trajectories[0][idx, :] = [front_leg_dist_x, toe_p.pos[0] + front_left_dist_y, toe_p.pos[1] - ride_height]
     leg_toe_trajectories[1][idx_opp, :] = [centre_leg_dist_x, toe_p.pos[0], toe_p.pos[1] - ride_height]
-    leg_toe_trajectories[2][idx, :] = [offset_leg_dist_x, toe_p.pos[0] - offset_left_dist_y, toe_p.pos[1] - ride_height]
-    leg_toe_trajectories[5][idx_opp, :] = [-offset_leg_dist_x, toe_p.pos[0] + offset_left_dist_y, toe_p.pos[1] - ride_height]
+    leg_toe_trajectories[2][idx, :] = [rear_leg_dist_x, toe_p.pos[0] + rear_left_dist_y, toe_p.pos[1] - ride_height]
+    leg_toe_trajectories[5][idx_opp, :] = [-front_leg_dist_x, toe_p.pos[0] + front_left_dist_y, toe_p.pos[1] - ride_height]
     leg_toe_trajectories[4][idx, :] = [-centre_leg_dist_x, toe_p.pos[0], toe_p.pos[1] - ride_height]
-    leg_toe_trajectories[3][idx_opp, :] = [-offset_leg_dist_x, toe_p.pos[0] - offset_left_dist_y, toe_p.pos[1] - ride_height]
+    leg_toe_trajectories[3][idx_opp, :] = [-rear_leg_dist_x, toe_p.pos[0] + rear_left_dist_y, toe_p.pos[1] - ride_height]
 
   floor_vel = floor_length / 0.5
-  for joint in [0, 1, 4, 5]:  # range(6):
-    for idx in range(traj_length):
-      goal_leg_space = translate_datum(leg_toe_trajectories[joint][idx, :], joint)
-      joint_angles = kin.inverse(goal_leg_space)
-      joint_trajectory[idx, (joint*3):(joint*3+3)] = joint_angles
+  for joint in [0, 1, 2, 3, 4, 5]:  # range(6):
+    for idx in range(traj_length * 3):
+      goal_leg_space = translate_datum(leg_toe_trajectories[joint][(idx % traj_length), :], joint)
+      try:
+        joint_angles = kin.inverse(goal_leg_space)
+        joint_trajectory[(idx % traj_length), (joint*3):(joint*3+3)] = joint_angles
 
-      if debug_filename is not None:
+        if debug_filename is not None:
 
-        # toe_pos_debug = leg_toe_trajectories[joint][idx, :] + np.array([0, 0, -0.005])
-        # debug_file.add_point(toe_pos_debug, 0, 255, 0)
+          time = idx / 200.0
+          floor_motion = np.array([0, -floor_vel * time, 0])
 
-        time = idx / 200.0
-        floor_motion = np.array([0, -floor_vel * time, 0])
-
-        joint_positions_leg_space = kin.forwards_all_joints(joint_angles)
-        for key, pos in joint_positions_leg_space.items():
-          pos = inverse_translate_datum(pos, joint)
-          joint_positions_leg_space[key] = pos + floor_motion
-        debug_file.add_line(joint_positions_leg_space["joint_0"], joint_positions_leg_space["joint_1"], 255, 255, 255)
-        debug_file.add_line(joint_positions_leg_space["joint_1"], joint_positions_leg_space["joint_2"], 255, 255, 255)
-        debug_file.add_line(joint_positions_leg_space["joint_2"], joint_positions_leg_space["toe"], 255, 255, 255)
+          joint_positions_leg_space = kin.forwards_all_joints(joint_angles)
+          for key, pos in joint_positions_leg_space.items():
+            pos = inverse_translate_datum(pos, joint)
+            joint_positions_leg_space[key] = pos + floor_motion
+          debug_file.add_line(joint_positions_leg_space["joint_0"], joint_positions_leg_space["joint_1"], red[joint], green[joint], blue[joint])
+          debug_file.add_line(joint_positions_leg_space["joint_1"], joint_positions_leg_space["joint_2"], red[joint], green[joint], blue[joint])
+          debug_file.add_line(joint_positions_leg_space["joint_2"], joint_positions_leg_space["toe"], red[joint], green[joint], blue[joint])
+      except NoKinematicSolution:
+        toe_pos_debug = leg_toe_trajectories[joint][idx, :] + np.array([0, 0, -0.005])
+        debug_file.add_point(toe_pos_debug, 255, 0, 0)
+        pass
 
   if debug_filename is not None:
     debug_file.save(debug_filename)
@@ -284,15 +299,19 @@ def optimise_walking_gait():
   ride_height = 0.04
   floor_length = 0.01
   centre_leg_dist_x = 0.18
-  offset_leg_dist_x = 0.115
-  offset_left_dist_y = 0.137
+  front_leg_dist_x = 0.115
+  front_left_dist_y = 0.137
+  rear_leg_dist_x = 0.115
+  rear_left_dist_y = -0.137
   x = np.array([ride_height,
                floor_length,
                centre_leg_dist_x,
-               offset_leg_dist_x,
-               offset_left_dist_y])
+               front_leg_dist_x,
+               front_left_dist_y,
+               rear_leg_dist_x,
+               rear_left_dist_y])
 
-  init_std_devs = np.array([0.01, 0.005, 0.01, 0.01, 0.01])
+  init_std_devs = np.array([0.01, 0.005, 0.01, 0.01, 0.01, 0.01, 0.01])
   try_limit = 400
   initial_cost = cost_fn(x, "initial_cost.ply")
   if initial_cost is None:
@@ -319,8 +338,17 @@ def optimise_walking_gait():
     if solution_improved:
       print("Cost improved to: %f" % last_cost)
 
-  cost_fn(x, "Final_gain_toes.ply")
+  cost_fn(x, "Final_gait_toes.ply")
   gait_trajectory = create_gait_trajectory(x, 0.5, "gait_debug.ply")
+
+  print("Final trajectory\n---------------------------")
+  idx = 0
+  for row in gait_trajectory:
+    line = "%d, " % idx
+    for angle in row:
+      line += "%f, " % angle
+    idx += 1
+    print(line)
 
 
 if __name__ == "__main__":
