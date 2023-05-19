@@ -44,9 +44,13 @@ class GlLinesGeometry:
         self.positions = []
         self.colors = []
 
-        self.add_line([0, 0, 0], [1, 0, 0], 1, 0, 0)
-        self.add_line([0, 0, 0], [0, 1, 0], 0, 1, 0)
-        self.add_line([0, 0, 0], [0, 0, 1], 0, 0, 1)
+        self.add_line([0, 0, 0], [0.1, 0, 0], 1, 0, 0)
+        self.add_line([0, 0, 0], [0, 0.1, 0], 0, 1, 0)
+        self.add_line([0, 0, 0], [0, 0, 0.1], 0, 0, 1)
+
+    def clear_lines(self):
+      self.positions = []
+      self.colors = []
 
     def add_line(self, start, end, r, g, b):
 
@@ -62,6 +66,15 @@ class GlLinesGeometry:
         self.update_geometry()
 
     def update_geometry(self):
+
+        # delete old buffers
+        if isinstance(self.vbo, VBO):
+          self.vbo.delete()
+        if isinstance(self.vbo_col, VBO):
+          self.vbo_col.delete()
+        if isinstance(self.ibo, VBO):
+          self.ibo.delete()
+
         self.vbo = VBO(geom_type=GL_LINES)
         self.vbo_col = VBO()
         self.ibo = IBO(geom_type=GL_LINES)
@@ -82,6 +95,8 @@ class GlLinesGeometry:
         self.ibo.set_indices(stride=4,
                              bytelength=4 * point_count,
                              data=(ctypes.c_uint * point_count)(*indices))
+
+        ctypes._reset_cache()
 
     def draw(self, mvp):
       """

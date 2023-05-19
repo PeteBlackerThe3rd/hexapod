@@ -170,7 +170,7 @@ def cost_fn(state_vector, debug_filename=None):
       rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
-  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5)
+  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5)
 
   kin = LegKinematics()
   if debug_filename is not None:
@@ -233,7 +233,7 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
       rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
-  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5)
+  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5)
 
   red = [255, 0, 0, 128, 0, 0]
   green = [0, 255, 0, 0, 128, 0]
@@ -283,8 +283,8 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
           debug_file.add_line(joint_positions_leg_space["joint_1"], joint_positions_leg_space["joint_2"], red[joint], green[joint], blue[joint])
           debug_file.add_line(joint_positions_leg_space["joint_2"], joint_positions_leg_space["toe"], red[joint], green[joint], blue[joint])
       except NoKinematicSolution:
-        toe_pos_debug = leg_toe_trajectories[joint][idx, :] + np.array([0, 0, -0.005])
-        debug_file.add_point(toe_pos_debug, 255, 0, 0)
+        # toe_pos_debug = leg_toe_trajectories[joint][idx, :] + np.array([0, 0, -0.005])
+        # debug_file.add_point(toe_pos_debug, 255, 0, 0)
         pass
 
   if debug_filename is not None:
@@ -296,7 +296,7 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
 def optimise_walking_gait():
 
   # define seed values
-  ride_height = 0.04
+  ride_height = 0.05
   floor_length = 0.01
   centre_leg_dist_x = 0.18
   front_leg_dist_x = 0.115
@@ -349,6 +349,8 @@ def optimise_walking_gait():
       line += "%f, " % angle
     idx += 1
     print(line)
+
+  return gait_trajectory
 
 
 if __name__ == "__main__":

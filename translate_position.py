@@ -1,5 +1,8 @@
 from math import sin, cos
 import numpy as np
+from leg_kinematics import LegKinematics
+
+kin = LegKinematics()
 
 LEG_FRONT_RIGHT = 0
 LEG_MIDDLE_RIGHT = 1
@@ -51,3 +54,21 @@ def inverse_translate_datum(point, leg):
     new_point = np.matmul(R, point)
     new_point = np.matmul(R, new_point)
     return new_point
+
+
+def joints_to_all_leg_positions(joint_angles):
+    """
+    Function to convert an array like object of 18 joint angles in radians to a dictionary of legs with
+    the 3D position of all joints in the robot body frame
+    :param joint_angles:
+    :return: dictionary of 3D leg positions
+    """
+    positions = {}
+    for leg_idx in range(6):
+        leg_joint_angles = joint_angles[leg_idx*3:leg_idx*3+3]
+        leg_positions = kin.forwards_all_joints(leg_joint_angles)
+        for key in leg_positions.keys():
+            leg_positions[key] = inverse_translate_datum(leg_positions[key], leg_idx)
+        positions[leg_idx] = leg_positions
+
+    return positions

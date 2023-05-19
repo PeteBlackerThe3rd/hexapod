@@ -22,7 +22,7 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.dc = None
 
         self.view_centre = glm.vec3(0.0, 0.0, -10.8)
-        self.view_scale = 1.0
+        self.view_scale = 25.0
         self.view_translation = glm.vec3(0.0, 0.0, 0.0)
         self.view_rotation = glm.mat4(1.0)
 
@@ -41,6 +41,22 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.Bind(wx.EVT_MIDDLE_UP, self.on_middle_mouse_up)
         self.Bind(wx.EVT_MOTION, self.OnMouseMotion)
         self.Bind(wx.EVT_MOUSEWHEEL, self.on_mouse_wheel)
+
+    def update_robot_pose(self, positions):
+        self.lines.clear_lines()
+
+        # Add body hexagon
+        for leg_idx in range(6):
+            self.lines.add_line(positions[leg_idx]["joint_0"], positions[(leg_idx+1) % 6]["joint_0"], 1, 1, 1)
+
+        # Add legs
+        for leg_idx in range(6):
+            self.lines.add_line(positions[leg_idx]["joint_0"], positions[leg_idx]["joint_1"], 1, 0, 0)
+            self.lines.add_line(positions[leg_idx]["joint_1"], positions[leg_idx]["joint_2"], 0, 1, 0)
+            self.lines.add_line(positions[leg_idx]["joint_2"], positions[leg_idx]["toe"], 0, 0, 1)
+
+        self.lines.update_geometry()
+        self.Refresh()
 
     def OnSize(self, event):
         wx.CallAfter(self.DoSetViewport)
@@ -140,6 +156,7 @@ class ViewerCanvas(glcanvas.GLCanvas):
         else:
             self.view_scale /= 1.0 + (factor * -wheel)
         self.Refresh(False)
+        print("Updated view_scale to %f" % self.view_scale)
 
     def set_trajecory(self,):
         """
@@ -156,6 +173,7 @@ class ViewerCanvas(glcanvas.GLCanvas):
         """
         if not self.lines_init:
             self.lines.initialize()
+            print("init lines object")
             self.lines_init = True
 
         # clear viewport to black
