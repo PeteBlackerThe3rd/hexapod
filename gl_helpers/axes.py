@@ -149,6 +149,13 @@ class GlAxes:
         sizeof_float = 4
         v_dims = n_dims = 3
 
+        print("Axes init:\nv_count:%d\nvertices len:%d\ncolors len:%d\nnormals len:%d"% (
+          self.v_count,
+          len(self.vertices),
+          len(self.colors),
+          len(self.normals)
+        ))
+
         self.vbo.set_vertex_attribute(component_count=v_dims,
                                       bytelength=sizeof_float * v_dims * self.v_count,
                                       data=(ctypes.c_float * (v_dims * self.v_count))(*self.vertices))

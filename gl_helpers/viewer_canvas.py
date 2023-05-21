@@ -3,11 +3,13 @@ import wx
 import wx.glcanvas as glcanvas
 from OpenGL.GL import *
 import glm
+import os
 # from .gl_helpers.background_fade import BackgroundFade
 # from .gl_helpers.gl_cloud import GlCloud
 from .gl_lines import GlLinesGeometry
 # from .gl_helpers.gl_polar_bounding_box import GlPolarBoundingBox
 from .axes import GlAxes
+from .actor import GLActor
 
 
 class ViewerCanvas(glcanvas.GLCanvas):
@@ -25,6 +27,9 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.view_scale = 25.0
         self.view_translation = glm.vec3(0.0, 0.0, 0.0)
         self.view_rotation = glm.mat4(1.0)
+
+        # load robot link models
+        self.link_actors = {"body": GLActor(os.path.join("resources", "models", "body_assy.stl"))}
 
         # Create GL helper objects used to display view elements
         self.axes = GlAxes()
@@ -188,13 +193,21 @@ class ViewerCanvas(glcanvas.GLCanvas):
                                         glm.mat3(self.view_rotation) * (self.view_translation * self.view_scale))
         view_scaled = glm.scale(view_translated, glm.vec3(self.view_scale))
         model_view = view_scaled * self.view_rotation
-        min_depth = 0.001  # 1 millimeters
-        max_depth = 100.0   # 100 meters
+        min_depth = 0.1  # 1 millimeters
+        max_depth = 20.0   # 100 meters
         projection = glm.perspective(45.0, aspect_ratio, min_depth, max_depth)
         mvp = projection * model_view
 
         glLineWidth(3.0)
         self.lines.draw(mvp)
+
+        # draw all links of the robot in their respective coordinate frames
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
+        for frame, actor in self.link_actors.items():
+            actor.draw(mvp)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
 
         # setup axes viewport
         axes_size = min(self.view_port_size.width, self.view_port_size.height) // 5
