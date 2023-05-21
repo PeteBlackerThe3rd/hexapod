@@ -12,7 +12,7 @@ LEG_MIDDLE_LEFT = 4
 LEG_FRONT_LEFT = 5
 
 LEG_PIVOTS = {0:(0.0,-0.1,0.0), 1:(0.0,-0.1,0.0), 2:(0.0,-0.1,0.0), 3:(0.0,-0.1,0.0), 4:(0.0,-0.1,0.0), 5:(0.0,-0.1,0.0) } # in leg space, all legs are the same
-LEG_ANGLES = {0:40.0, 1:90.0, 2:130.0, 3:-130.0, 4:-90.0, 5:-40.0}  # Angles in relation to +ve Y - Forward in robot space
+LEG_ANGLES = {0:40.0, 1:90.0, 2:140.0, 3:-140.0, 4:-90.0, 5:-40.0}  # Angles in relation to +ve Y - Forward in robot space
 
 
 # Courtesy of ChatGPT
