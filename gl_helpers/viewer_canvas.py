@@ -36,6 +36,8 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.lines = GlLinesGeometry()
         self.lines_init = False
 
+        self.tf_axes = GlAxes(0.05)
+
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
         self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -200,6 +202,11 @@ class ViewerCanvas(glcanvas.GLCanvas):
 
         glLineWidth(3.0)
         self.lines.draw(mvp)
+
+        # draw axes for each frame if enabled
+        for label, frame in self.main_window.frames.items():
+            frame_mvp = mvp * glm.mat4(frame)
+            self.tf_axes.draw(frame_mvp)
 
         # draw all links of the robot in their respective coordinate frames
         glEnable(GL_DEPTH_TEST)

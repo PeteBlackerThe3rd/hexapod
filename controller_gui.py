@@ -6,9 +6,11 @@
 """
 import os
 import wx
+import numpy as np
 from gl_helpers.viewer_canvas import ViewerCanvas
 from gait_generator import optimise_walking_gait
-from translate_position import joints_to_all_leg_positions
+from translate_position import joints_to_all_leg_positions, get_leg_base_frames
+from leg_kinematics import LegKinematics as Kin
 
 
 class MainMenu(wx.MenuBar):
@@ -73,6 +75,10 @@ class MainWindow(wx.Frame):
     self.animate_timer = wx.Timer(self)
     self.Bind(wx.EVT_TIMER, self.update_frame, self.animate_timer)
 
+    self.base_frames = get_leg_base_frames()
+    self.frames = self.base_frames
+    self.kin = Kin()
+
     self.canvas = ViewerCanvas(self)
     window_sizer.Add(self.canvas, proportion=2, flag=wx.EXPAND)
 
@@ -98,7 +104,17 @@ class MainWindow(wx.Frame):
   def update_frame(self, _):
     self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
     positions = joints_to_all_leg_positions(self.joint_trajectory[self.animation_step])
-    self.canvas.update_robot_pose(positions)
+
+    self.frames = self.base_frames
+    labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+    for leg_idx, label in enumerate(labels):
+      angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
+      leg_frames = self.kin.forwards_all_frames(angles)
+      for leg_label in leg_frames.keys():
+        leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
+        self.frames[label + "_" + leg_label] = leg_frames[leg_label]
+
+    self.canvas.Refresh()  # update_robot_pose(positions)
 
 
 def main():

@@ -25,7 +25,7 @@ Leg zero pose, viewed from the side (up is up and down is down!):
  ,+ve    ,+ve      |
 
 """
-
+from scipy.spatial.transform import Rotation as SciRot
 import numpy as np
 
 
@@ -110,6 +110,31 @@ class LegKinematics:
       positions[key][1] = np.cos(joint_angles[0]) * positions[key][1]
 
     return positions
+
+  def forwards_all_frames(self, joint_angles):
+    """
+    Forwards kinematic function for a single leg. Converts a set of three
+    joint angles into the 4x4 transformation matrices of all three links
+    :param joint_angles: 3 element array of angles in radians (range +/- pi)
+    :return: dictionary of labelled 4x4 ndarray transformation matrices
+    """
+    # init all frames to identity
+    frames = {"link_0": np.eye(4), "link_1": np.eye(4), "link_2": np.eye(4)}
+
+    # link zero is just a rotation about the leg origin
+    frames["link_0"][0:3, 0:3] = SciRot.from_rotvec([0, 0, joint_angles[0]]).as_matrix()
+
+    # link one is a translation by hip length and rotation
+    frames["link_1"][0:3, 0:3] = SciRot.from_rotvec([joint_angles[1], 0, 0]).as_matrix()
+    frames["link_1"][3, 1] = self.hip_length
+    frames["link_1"] = np.matmul(frames["link_1"], frames["link_0"])
+
+    # link two is translation by thigh length and rotation
+    frames["link_2"][0:3, 0:3] = SciRot.from_rotvec([joint_angles[2], 0, 0]).as_matrix()
+    frames["link_2"][3, 1] = self.thigh_length
+    frames["link_2"] = np.matmul(frames["link_2"], frames["link_1"])
+
+    return frames
 
   def inverse(self, toe_position):
     """

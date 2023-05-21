@@ -1,5 +1,6 @@
 from math import sin, cos
 import numpy as np
+from scipy.spatial.transform import Rotation as SciRot
 from leg_kinematics import LegKinematics
 
 kin = LegKinematics()
@@ -13,6 +14,23 @@ LEG_FRONT_LEFT = 5
 
 LEG_PIVOTS = {0:(0.0,-0.1,0.0), 1:(0.0,-0.1,0.0), 2:(0.0,-0.1,0.0), 3:(0.0,-0.1,0.0), 4:(0.0,-0.1,0.0), 5:(0.0,-0.1,0.0) } # in leg space, all legs are the same
 LEG_ANGLES = {0:40.0, 1:90.0, 2:140.0, 3:-140.0, 4:-90.0, 5:-40.0}  # Angles in relation to +ve Y - Forward in robot space
+
+
+def get_leg_base_frames():
+    """
+    returns a dictionary of 4x4 transformation matrices from the robot body frame to the base
+    frames of all six legs
+    :return: dict of 4x4 ndarrays
+    """
+    labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+    frames = {}
+    for idx, label in enumerate(labels):
+        tf = np.eye(4)
+        rot_vec = [0, 0, np.deg2rad(LEG_ANGLES[idx])]
+        tf[0:3, 0:3] = SciRot.from_rotvec(rot_vec).as_matrix()
+        tf[3, 0:3] = np.matmul((0.0, 0.1, 0.0), tf[0:3, 0:3])
+        frames[label] = tf
+    return frames
 
 
 # Courtesy of ChatGPT

@@ -63,7 +63,7 @@ void main(void)
 
 
 class GlAxes:
-    def __init__(self):
+    def __init__(self, scale=1.0):
         self.vbo = None
         self.vbo_col = None
         self.vbo_norm = None
@@ -75,6 +75,8 @@ class GlAxes:
         self.normals = []
         self.colors = []
         self.v_count = 0
+
+        self.scale = scale * 0.2
 
         # Add axis arrows in X, Y, and Z directions
         self.add_axis(5.0, [1, 0, 0], glm.mat4(1.0))
@@ -88,9 +90,9 @@ class GlAxes:
 
       # compute normal
       normal = glm.normalize(glm.cross((v1 - v2).xyz, (v2 - v3).xyz))
-      self.vertices.extend([v1.x, v1.y, v1.z])
-      self.vertices.extend([v2.x, v2.y, v2.z])
-      self.vertices.extend([v3.x, v3.y, v3.z])
+      self.vertices.extend([v1.x * self.scale, v1.y * self.scale, v1.z * self.scale])
+      self.vertices.extend([v2.x * self.scale, v2.y * self.scale, v2.z * self.scale])
+      self.vertices.extend([v3.x * self.scale, v3.y * self.scale, v3.z * self.scale])
       self.colors.extend(color)
       self.colors.extend(color)
       self.colors.extend(color)
