@@ -44,7 +44,7 @@ class LegKinematics:
 
     # define joint limits
     self.joint_low_limits = np.array([np.deg2rad(-30), np.deg2rad(-80), np.deg2rad(0)])
-    self.joint_high_limits = np.array([np.deg2rad(30), np.deg2rad(80), np.deg2rad(80)])
+    self.joint_high_limits = np.array([np.deg2rad(30), np.deg2rad(80), np.deg2rad(130)])
 
   def compute_joint_limit_margin(self, joint_angles):
     """
