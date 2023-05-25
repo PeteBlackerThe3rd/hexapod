@@ -143,16 +143,15 @@ class MainWindow(wx.Frame):
 
   def generate_testing_trajectory(self):
       traj = []
-      still_count = 20
+      still_count = 10
 
       for servo in range(18):
         leg_joint = servo % 3
         servo_angles = [0] * still_count
-        servo_angles.extend(np.linspace(0, self.kin.joint_high_limits[leg_joint], 30))
-        servo_angles.extend(np.linspace(self.kin.joint_high_limits[leg_joint], 0, 30))
-        servo_angles.extend([0] * still_count)
-        servo_angles.extend(np.linspace(0, self.kin.joint_low_limits[leg_joint], 30))
-        servo_angles.extend(np.linspace(self.kin.joint_low_limits[leg_joint], 0, 30))
+        servo_angles.extend(np.linspace(0, self.kin.joint_high_limits[leg_joint], 15))
+        servo_angles.extend(np.linspace(self.kin.joint_high_limits[leg_joint], 0, 15))
+        servo_angles.extend(np.linspace(0, self.kin.joint_low_limits[leg_joint], 15))
+        servo_angles.extend(np.linspace(self.kin.joint_low_limits[leg_joint], 0, 15))
 
         for angle in servo_angles:
           angles = np.zeros(18,)

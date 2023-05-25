@@ -205,7 +205,7 @@ class ViewerCanvas(glcanvas.GLCanvas):
 
         # draw axes for each frame if enabled
         for label, frame in self.main_window.frames.items():
-            frame_mvp = mvp * glm.mat4(frame)
+            frame_mvp = mvp * glm.transpose(glm.mat4(frame))
             self.tf_axes.draw(frame_mvp)
 
         # draw all links of the robot in their respective coordinate frames
