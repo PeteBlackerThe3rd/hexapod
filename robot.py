@@ -68,6 +68,7 @@ SERVO_DIR[17] = -1
 
 ANKLE_SERVOS = [2, 5, 8, 11, 14, 17]
 
+
 def calculate_servo_positions(angles):
     positions = [1500]*18
     for i, angle in enumerate(angles):
@@ -82,6 +83,7 @@ def calculate_servo_positions(angles):
         positions[i] = int(pos)
     return positions
 
+
 def calculate_servo_position(angle, servo):
     if servo in ANKLE_SERVOS:
         # Ankle servos are offset by 90 degrees
@@ -92,6 +94,7 @@ def calculate_servo_position(angle, servo):
     elif pos > MAX_PULSE_LENGTH:
         pos = MAX_PULSE_LENGTH
     return int(pos)
+
 
 class robot:
     """
@@ -115,7 +118,7 @@ class robot:
           self.s.write(struct.pack('<h', tval))
         self.last_send_time = monotonic_ns()
         self.servo_pos = [CENTRE_PULSE_LENGTH]*18
-        self.absolute_toe_positions = [np.array([0,0,0])]*6
+        self.absolute_toe_positions = [np.array([0, 0, 0])]*6
 
     def set_leg_joint_angles(self, joint_angles, leg):
         """
@@ -134,7 +137,6 @@ class robot:
         """
         for idx, angle in enumerate(joint_angles):
             self.servo_pos[idx] = calculate_servo_position(joint_angles[0])
-
 
     def set_toe_position_relative(self, goal_toe_position, leg):
         """
@@ -191,9 +193,8 @@ class robot:
                     continue
                 skip_count = 0
                 self.servo_pos = joint_pos
-                #print(cycle, joint_pos)
+                # print(cycle, joint_pos)
                 self.send()
-
 
     def send(self):
         # limit writes to FREQUENCY Hz
@@ -203,7 +204,10 @@ class robot:
         self.s.write(array('H', self.servo_pos).tobytes())
         self.last_send_time = monotonic_ns()
 
-
-
+    def send_joint_angles(self, joint_angles):
+        assert len(joint_angles) == 18, "send_joint_angles fails, joint_angles param doesn't contain 18 values";
+        for idx, joint_angle in enumerate(joint_angles):
+            self.servo_pos[idx] = calculate_servo_position(joint_angle)
+        self.send()
                 
 

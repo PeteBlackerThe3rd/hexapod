@@ -1,4 +1,9 @@
+python 3.8
+
+numpy-stl
 numpy
 wxpython
 pyopengl
 pyglm
+scipy
+pyserial

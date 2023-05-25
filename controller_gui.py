@@ -12,6 +12,7 @@ from gl_helpers.viewer_canvas import ViewerCanvas
 from gait_generator import optimise_walking_gait
 from translate_position import joints_to_all_leg_positions, get_leg_base_frames
 from leg_kinematics import LegKinematics as Kin
+from robot import robot as Robot
 
 
 class MainMenu(wx.MenuBar):
@@ -19,7 +20,10 @@ class MainMenu(wx.MenuBar):
   ID_OPEN = 1001
   ID_QUIT = 1010
 
+  ID_CONNECT_ROBOT = 3001
+
   ID_GEN_WALKING = 2001
+  ID_GEN_TEST = 2002
 
   def __init__(self, main_window):
     """
@@ -34,8 +38,14 @@ class MainMenu(wx.MenuBar):
     self.file_menu.Append(self.ID_QUIT, "Quit", kind=wx.ITEM_NORMAL)
     self.Append(self.file_menu, '&File')
 
+    self.robot_menu = wx.Menu()
+    self.robot_menu.Append(self.ID_CONNECT_ROBOT, "Connect Robot")
+    self.Append(self.robot_menu, "Robot")
+
     self.gen_menu = wx.Menu()
-    self.gen_menu.Append(self.ID_GEN_WALKING, "Generator Walking Gait")
+    self.gen_menu.Append(self.ID_GEN_WALKING, "Generate Walking Gait")
+    self.gen_menu.AppendSeparator()
+    self.gen_menu.Append(self.ID_GEN_TEST, "Generator Servo Test Trajectory")
     self.Append(self.gen_menu, "&Generators")
 
     main_window.SetMenuBar(self)
@@ -66,10 +76,14 @@ class MainWindow(wx.Frame):
     self.menu_bar = MainMenu(self)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_OPEN, self.on_open_trajectory_menu)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_QUIT, self.on_quit_menu)
+    self.menu_bar.bind_menu_handler(self.menu_bar.ID_CONNECT_ROBOT, self.on_connect_robot)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_GEN_WALKING, self.gen_walking_gait)
+    self.menu_bar.bind_menu_handler(self.menu_bar.ID_GEN_TEST, self.gen_test_trajectory)
 
     window_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.SetSizer(window_sizer)
+
+    self.robot_interface = None
 
     self.joint_trajectory = None
     self.animation_step = 0
@@ -95,12 +109,19 @@ class MainWindow(wx.Frame):
   def on_quit_menu(self, _):
     self.Close()
 
+  def on_connect_robot(self, _):
+    self.robot_interface = Robot()
+
   def gen_walking_gait(self, _):
       self.joint_trajectory = optimise_walking_gait()
       print(self.joint_trajectory)
       # positions = joints_to_all_leg_positions(joint_trajectory[0])
-      self.animate_timer.Start(15)
+      self.animate_timer.Start(1000 / 15.0)
       # self.canvas.update_robot_pose(positions)
+
+  def gen_test_trajectory(self, _):
+      self.joint_trajectory = self.generate_testing_trajectory()
+      self.animate_timer.Start(1000 / 15.0)
 
   def update_frame(self, _):
     self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
@@ -115,7 +136,30 @@ class MainWindow(wx.Frame):
         leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
         self.frames[label + "_" + leg_label] = leg_frames[leg_label]
 
+      if self.robot_interface is not None:
+        self.robot_interface.send_joint_angles(angles)
+
     self.canvas.Refresh()  # update_robot_pose(positions)
+
+  def generate_testing_trajectory(self):
+      traj = []
+      still_count = 20
+
+      for servo in range(18):
+        leg_joint = servo % 3
+        servo_angles = [0] * still_count
+        servo_angles.extend(np.linspace(0, self.kin.joint_high_limits[leg_joint], 30))
+        servo_angles.extend(np.linspace(self.kin.joint_high_limits[leg_joint], 0, 30))
+        servo_angles.extend([0] * still_count)
+        servo_angles.extend(np.linspace(0, self.kin.joint_low_limits[leg_joint], 30))
+        servo_angles.extend(np.linspace(self.kin.joint_low_limits[leg_joint], 0, 30))
+
+        for angle in servo_angles:
+          angles = np.zeros(18,)
+          angles[servo] = angle
+          traj.append(angles)
+
+      return traj
 
 
 def main():
