@@ -70,6 +70,7 @@ class GlAxes:
         self.ibo = None
         self.shader = None
         self.mvp_location = None
+        self.initialized = False
 
         self.vertices = []
         self.normals = []
@@ -179,8 +180,9 @@ class GlAxes:
       :return: None
       """
       # glEnable(GL_CULL_FACE)
-      if not self.vbo:
+      if not self.initialized:
           self.initialize()
+          self.initialized = True
       self.shader.use()
       self.vbo.set_slot(0)
       self.vbo_col.set_slot(1)

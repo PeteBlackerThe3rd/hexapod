@@ -32,11 +32,11 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.link_actors = {"body": GLActor(os.path.join("resources", "models", "body_assy.stl"))}
 
         # Create GL helper objects used to display view elements
-        self.axes = GlAxes()
+        self.axes = GlAxes(5)
         self.lines = GlLinesGeometry()
         self.lines_init = False
 
-        self.tf_axes = GlAxes(0.05)
+        self.tf_axes = GlAxes(0.03)
 
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
@@ -200,8 +200,8 @@ class ViewerCanvas(glcanvas.GLCanvas):
         projection = glm.perspective(45.0, aspect_ratio, min_depth, max_depth)
         mvp = projection * model_view
 
-        glLineWidth(3.0)
-        self.lines.draw(mvp)
+        # glLineWidth(3.0)
+        # self.lines.draw(mvp)
 
         # draw axes for each frame if enabled
         for label, frame in self.main_window.frames.items():

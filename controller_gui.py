@@ -6,6 +6,7 @@
 """
 import os
 import wx
+import copy
 import numpy as np
 from gl_helpers.viewer_canvas import ViewerCanvas
 from gait_generator import optimise_walking_gait
@@ -103,9 +104,9 @@ class MainWindow(wx.Frame):
 
   def update_frame(self, _):
     self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
-    positions = joints_to_all_leg_positions(self.joint_trajectory[self.animation_step])
+    self.status_bar.SetStatusText("laying trajectory sample %d of %d" % (self.animation_step, len(self.joint_trajectory)))
 
-    self.frames = self.base_frames
+    self.frames = copy.copy(self.base_frames)
     labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
     for leg_idx, label in enumerate(labels):
       angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]

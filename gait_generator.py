@@ -87,7 +87,7 @@ class Trajectory:
     return new_traj
 
 
-def gen_walking_toe_trajectory(floor_distance=1.4, lift_height=0.4, floor_duration=0.5, save=False):
+def gen_walking_toe_trajectory(floor_distance=1.4, lift_height=0.4, floor_duration=0.5, save=False, res=200):
   """
   Use cubic bezier splines to create a trajectory where the toe
   smoothly transitions from moving on the ground to lifting
@@ -145,7 +145,7 @@ def gen_walking_toe_trajectory(floor_distance=1.4, lift_height=0.4, floor_durati
   # print("final lift trajectory duration = %f" % lift_final_duration)
 
   floor_traj.extend(lift_traj)
-  even_traj = floor_traj.interpolate_even_timesteps(200)
+  even_traj = floor_traj.interpolate_even_timesteps(res)
 
   if save:
     debug = PLYFile()
@@ -222,7 +222,7 @@ def cost_fn(state_vector, debug_filename=None):
     return floor_length
 
 
-def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
+def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None, res=200):
   """
   Create a full robot joint trajectory for the walking gait described by the state vector
   :param state_vector:
@@ -233,7 +233,7 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None):
       rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
-  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5)
+  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5, res=res)
 
   red = [255, 0, 0, 128, 0, 0]
   green = [0, 255, 0, 0, 128, 0]
@@ -339,7 +339,7 @@ def optimise_walking_gait():
       print("Cost improved to: %f" % last_cost)
 
   cost_fn(x, "Final_gait_toes.ply")
-  gait_trajectory = create_gait_trajectory(x, 0.5, "gait_debug.ply")
+  gait_trajectory = create_gait_trajectory(x, 0.5, "gait_debug.ply", res=125*4)
 
   print("Final trajectory\n---------------------------")
   idx = 0
