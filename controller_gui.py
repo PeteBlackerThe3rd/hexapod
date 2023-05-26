@@ -129,15 +129,17 @@ class MainWindow(wx.Frame):
 
     self.frames = copy.copy(self.base_frames)
     labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+    joint_angles = []
     for leg_idx, label in enumerate(labels):
-      angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
-      leg_frames = self.kin.forwards_all_frames(angles)
+      leg_angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
+      joint_angles += leg_angles.tolist()
+      leg_frames = self.kin.forwards_all_frames(leg_angles)
       for leg_label in leg_frames.keys():
         leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
         self.frames[label + "_" + leg_label] = leg_frames[leg_label]
 
-      if self.robot_interface is not None:
-        self.robot_interface.send_joint_angles(angles)
+    if self.robot_interface is not None:
+      self.robot_interface.send_joint_angles(joint_angles)
 
     self.canvas.Refresh()  # update_robot_pose(positions)
 
