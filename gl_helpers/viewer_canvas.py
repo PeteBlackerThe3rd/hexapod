@@ -29,7 +29,7 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.view_rotation = glm.mat4(1.0)
 
         # load robot link models
-        foot_actor = GLActor(os.path.join("resources", "models", "foot.stl"))
+        foot_actor = GLActor(os.path.join("resources", "models", "foot.stl"), color=[0.5, 0.5, 1.0])
         self.link_actors = {"body": GLActor(os.path.join("resources", "models", "body_assy.stl")),
                             "front_left_link_2": foot_actor,
                             "middle_left_link_2": foot_actor,
@@ -170,7 +170,6 @@ class ViewerCanvas(glcanvas.GLCanvas):
         else:
             self.view_scale /= 1.0 + (factor * -wheel)
         self.Refresh(False)
-        print("Updated view_scale to %f" % self.view_scale)
 
     def set_trajecory(self,):
         """

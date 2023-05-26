@@ -117,12 +117,12 @@ class MainWindow(wx.Frame):
       self.joint_trajectory = optimise_walking_gait()
       print(self.joint_trajectory)
       # positions = joints_to_all_leg_positions(joint_trajectory[0])
-      self.animate_timer.Start(1000 / 15.0)
+      self.animate_timer.Start(1000 / 30.0)
       # self.canvas.update_robot_pose(positions)
 
   def gen_test_trajectory(self, _):
       self.joint_trajectory = self.generate_testing_trajectory()
-      self.animate_timer.Start(1000 / 15.0)
+      self.animate_timer.Start(1000 / 30.0)
 
   def update_frame(self, _):
     self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)

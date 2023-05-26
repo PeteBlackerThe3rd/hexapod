@@ -172,7 +172,7 @@ def cost_fn(state_vector, debug_filename=None):
   ride_height = 0.06
 
   # create toe trajectory based upon ride height and floor length
-  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5)
+  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5)
 
   kin = LegKinematics()
   if debug_filename is not None:
@@ -235,7 +235,7 @@ def create_gait_trajectory(state_vector, ride_height, steps_per_sec, debug_filen
       rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
-  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5, res=res)
+  toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5, res=res)
 
   red = [255, 0, 0, 128, 0, 0]
   green = [0, 255, 0, 0, 128, 0]
