@@ -166,8 +166,10 @@ def cost_fn(state_vector, debug_filename=None):
   :param debug_filename
   :return: cost value
   """
-  ride_height, floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
+  floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
       rear_leg_dist_x, rear_left_dist_y = state_vector
+
+  ride_height = 0.06
 
   # create toe trajectory based upon ride height and floor length
   toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.04, floor_duration=0.5)
@@ -222,14 +224,14 @@ def cost_fn(state_vector, debug_filename=None):
     return floor_length
 
 
-def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None, res=200):
+def create_gait_trajectory(state_vector, ride_height, steps_per_sec, debug_filename=None, res=200):
   """
   Create a full robot joint trajectory for the walking gait described by the state vector
   :param state_vector:
   :param debug_filename
   :return: cost value
   """
-  ride_height, floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
+  floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
       rear_leg_dist_x, rear_left_dist_y = state_vector
 
   # create toe trajectory based upon ride height and floor length
@@ -296,22 +298,21 @@ def create_gait_trajectory(state_vector, steps_per_sec, debug_filename=None, res
 def optimise_walking_gait():
 
   # define seed values
-  ride_height = 0.05
+  ride_height = 0.06
   floor_length = 0.01
   centre_leg_dist_x = 0.18
   front_leg_dist_x = 0.115
   front_left_dist_y = 0.137
   rear_leg_dist_x = 0.115
   rear_left_dist_y = -0.137
-  x = np.array([ride_height,
-               floor_length,
+  x = np.array([floor_length,
                centre_leg_dist_x,
                front_leg_dist_x,
                front_left_dist_y,
                rear_leg_dist_x,
                rear_left_dist_y])
 
-  init_std_devs = np.array([0.01, 0.005, 0.01, 0.01, 0.01, 0.01, 0.01])
+  init_std_devs = np.array([0.005, 0.01, 0.01, 0.01, 0.01, 0.01])
   try_limit = 400
   initial_cost = cost_fn(x, "initial_cost.ply")
   if initial_cost is None:
@@ -339,7 +340,7 @@ def optimise_walking_gait():
       print("Cost improved to: %f" % last_cost)
 
   cost_fn(x, "Final_gait_toes.ply")
-  gait_trajectory = create_gait_trajectory(x, 0.5, "gait_debug.ply", res=125*4)
+  gait_trajectory = create_gait_trajectory(x, ride_height, 0.5, "gait_debug.ply", res=125*4)
 
   print("Final trajectory\n---------------------------")
   idx = 0

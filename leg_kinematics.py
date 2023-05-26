@@ -43,8 +43,8 @@ class LegKinematics:
     self.calf_length = 52.162e-3
 
     # define joint limits
-    self.joint_low_limits = np.array([np.deg2rad(-30), np.deg2rad(-80), np.deg2rad(0)])
-    self.joint_high_limits = np.array([np.deg2rad(30), np.deg2rad(80), np.deg2rad(130)])
+    self.joint_low_limits = np.array([np.deg2rad(-20), np.deg2rad(-80), np.deg2rad(0)])
+    self.joint_high_limits = np.array([np.deg2rad(20), np.deg2rad(80), np.deg2rad(130)])
 
   def compute_joint_limit_margin(self, joint_angles):
     """
