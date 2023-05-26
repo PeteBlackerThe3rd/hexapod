@@ -91,6 +91,7 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TIMER, self.update_frame, self.animate_timer)
 
     self.base_frames = get_leg_base_frames()
+    self.base_frames["body"] = np.eye(4)
     self.frames = self.base_frames
     self.kin = Kin()
 

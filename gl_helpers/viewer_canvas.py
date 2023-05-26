@@ -29,7 +29,14 @@ class ViewerCanvas(glcanvas.GLCanvas):
         self.view_rotation = glm.mat4(1.0)
 
         # load robot link models
-        self.link_actors = {"body": GLActor(os.path.join("resources", "models", "body_assy.stl"))}
+        foot_actor = GLActor(os.path.join("resources", "models", "foot.stl"))
+        self.link_actors = {"body": GLActor(os.path.join("resources", "models", "body_assy.stl")),
+                            "front_left_link_2": foot_actor,
+                            "middle_left_link_2": foot_actor,
+                            "rear_left_link_2": foot_actor,
+                            "front_right_link_2": foot_actor,
+                            "middle_right_link_2": foot_actor,
+                            "rear_right_link_2": foot_actor}
 
         # Create GL helper objects used to display view elements
         self.axes = GlAxes(5)
@@ -212,7 +219,10 @@ class ViewerCanvas(glcanvas.GLCanvas):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
         for frame, actor in self.link_actors.items():
-            actor.draw(mvp)
+            if frame in self.main_window.frames.keys():
+                frame_glm = glm.mat4(self.main_window.frames[frame])
+                actor_mvp = mvp * glm.transpose(frame_glm)
+                actor.draw(actor_mvp)
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_CULL_FACE)
 
