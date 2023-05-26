@@ -102,7 +102,7 @@ class robot:
     """
     def __init__(self):
         # Connect to Serial
-        self.s = serial.Serial(PORT, baudrate=230400, timeout=0.5)
+        self.s = serial.Serial(PORT, baudrate=115200, timeout=0.5)
         recv = ""
         while 'rp2040' not in recv:
             sleep(5)
@@ -207,7 +207,7 @@ class robot:
     def send_joint_angles(self, joint_angles):
         assert len(joint_angles) == 18, "send_joint_angles fails, joint_angles param doesn't contain 18 values";
         for idx, joint_angle in enumerate(joint_angles):
-            self.servo_pos[idx] = calculate_servo_position(joint_angle)
+            self.servo_pos[idx] = calculate_servo_position(joint_angle, idx)
         self.send()
                 
 
