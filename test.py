@@ -4,12 +4,12 @@ from leg_kinematics import LegKinematics as Kin, NoKinematicSolution
 from ply_debug_file import PLYFile
 from translate_position import translate_datum, inverse_translate_datum
 from time import sleep
-from robot import robot
+from robot import Robot
 import struct
 
 leg_kin = Kin()
 
-hexy = robot()
+hexy = Robot()
 
 def add_joint_config_to_debug_file(file, joint_angles):
   leg_positions = leg_kin.forwards_all_joints(joint_angles)

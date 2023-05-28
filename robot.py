@@ -3,8 +3,9 @@
 #  B<<18 unsigned bytes>> set servo positions
 #  T<<18 signed bytes>> set servo trim positions
 
-from time import sleep, monotonic_ns
+from time import time, sleep, monotonic_ns
 import serial
+import serial.tools.list_ports
 import numpy as np
 from math import pi
 import struct
@@ -96,20 +97,42 @@ def calculate_servo_position(angle, servo):
     return int(pos)
 
 
-class robot:
+class RobotPortDetectionFailed(Exception):
+  pass
+
+
+class RobotConnectionFailed(Exception):
+  pass
+
+
+class Robot:
     """
     Hexapod robot class 
     """
     def __init__(self):
         # Connect to Serial
-        self.s = serial.Serial(PORT, baudrate=115200, timeout=0.5)
+        self.connection_msg = ""
+        self.s = None
+        for port, _, __ in sorted(serial.tools.list_ports.comports()):
+            try:
+                self.attempt_port_connection(port)
+                self.connection_msg = "Connected to RP2040 on port " + port
+            except RobotPortDetectionFailed:
+                pass
+            except serial.SerialException:
+                pass
+
+        if self.s is None:
+            raise RobotConnectionFailed("Robot not detected")
+
+        """self.s = serial.Serial(PORT, baudrate=115200, timeout=0.5)
         recv = ""
         while 'rp2040' not in recv:
             sleep(5)
             self.s.write(b'V\n')
             recv = self.s.readline().decode("utf-8")
             print("connecting", recv)
-        print('connected')
+        print('connected')"""
 
         # Trim Servos
         self.s.write(b'T')
@@ -119,6 +142,25 @@ class robot:
         self.last_send_time = monotonic_ns()
         self.servo_pos = [CENTRE_PULSE_LENGTH]*18
         self.absolute_toe_positions = [np.array([0, 0, 0])]*6
+
+    def attempt_port_connection(self, port, timeout_secs=1.0):
+        serial_port = serial.Serial(port, baudrate=115200, timeout=0.5)
+        connected = False
+        start_time = time()
+        while time() - start_time < timeout_secs:
+            serial_port.write(b'V\n')
+            recv = serial_port.readline().decode("utf-8")
+            if 'ip2040' in recv:
+                connected = True
+                break
+            sleep(0.1)
+            print("connecting [%f] secs" % time())
+
+        if connected:
+            print('connected on port %s' % port)
+            self.s = serial_port
+        else:
+            raise RobotPortDetectionFailed("Failed to detect roboton on port %s" % str(port))
 
     def set_leg_joint_angles(self, joint_angles, leg):
         """

@@ -12,7 +12,7 @@ from gl_helpers.viewer_canvas import ViewerCanvas
 from gait_generator import optimise_walking_gait
 from translate_position import joints_to_all_leg_positions, get_leg_base_frames
 from leg_kinematics import LegKinematics as Kin
-from robot import robot as Robot
+from robot import Robot, RobotConnectionFailed
 
 
 class MainMenu(wx.MenuBar):
@@ -37,10 +37,6 @@ class MainMenu(wx.MenuBar):
     self.file_menu.Append(wx.ID_ANY, "", kind=wx.ITEM_SEPARATOR)
     self.file_menu.Append(self.ID_QUIT, "Quit", kind=wx.ITEM_NORMAL)
     self.Append(self.file_menu, '&File')
-
-    self.robot_menu = wx.Menu()
-    self.robot_menu.Append(self.ID_CONNECT_ROBOT, "Connect Robot")
-    self.Append(self.robot_menu, "Robot")
 
     self.gen_menu = wx.Menu()
     self.gen_menu.Append(self.ID_GEN_WALKING, "Generate Walking Gait")
@@ -97,6 +93,19 @@ class MainWindow(wx.Frame):
 
     self.canvas = ViewerCanvas(self)
     window_sizer.Add(self.canvas, proportion=2, flag=wx.EXPAND)
+    window_sizer.Add(wx.StaticLine(self, wx.ID_ANY, style=wx.LI_VERTICAL))
+
+    self.side_bar_sizer = wx.BoxSizer(wx.VERTICAL)
+    window_sizer.Add(self.side_bar_sizer)
+
+    self.connection_state_text = wx.StaticText(self, wx.ID_ANY, "Robot Not Connected")
+    self.side_bar_sizer.Add(self.connection_state_text, 1, wx.CENTER|wx.TOP, 5)
+    self.connect_button = wx.Button(self, wx.ID_ANY, label="Connect Robot")
+    self.connect_button.Bind(wx.EVT_BUTTON, self.on_connect_robot)
+    self.side_bar_sizer.Add(self.connect_button, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
+    self.side_bar_sizer.Add(wx.StaticLine(self, wx.ID_ANY, size=wx.Size(200, -1), style=wx.LI_HORIZONTAL))
+
+
 
     icon = wx.Icon()
     icon.CopyFromBitmap(wx.Bitmap(os.path.join("resources", "bug_icon.png"), wx.BITMAP_TYPE_ANY))
@@ -111,18 +120,22 @@ class MainWindow(wx.Frame):
     self.Close()
 
   def on_connect_robot(self, _):
-    self.robot_interface = Robot()
+    try:
+      self.robot_interface = Robot()
+      self.connection_state_text.SetLabel(self.robot_interface.connection_msg)
+    except RobotConnectionFailed as e:
+      self.connection_state_text.SetLabel(str(e))
 
   def gen_walking_gait(self, _):
       self.joint_trajectory = optimise_walking_gait()
       print(self.joint_trajectory)
       # positions = joints_to_all_leg_positions(joint_trajectory[0])
-      self.animate_timer.Start(1000 / 30.0)
+      self.animate_timer.Start(int(1000 / 30.0))
       # self.canvas.update_robot_pose(positions)
 
   def gen_test_trajectory(self, _):
       self.joint_trajectory = self.generate_testing_trajectory()
-      self.animate_timer.Start(1000 / 30.0)
+      self.animate_timer.Start(int(1000 / 30.0))
 
   def update_frame(self, _):
     self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
