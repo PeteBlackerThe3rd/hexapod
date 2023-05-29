@@ -147,7 +147,7 @@ class Robot:
         serial_port = serial.Serial(port, baudrate=115200, timeout=0.5, write_timeout=0.5)
         connected = False
         start_time = time()
-        while time() - start_time < timeout_secs:
+        while (time() - start_time) < timeout_secs:
             serial_port.write(b'V\n')
             recv = serial_port.readline().decode("utf-8")
             if 'rp2040' in recv:
