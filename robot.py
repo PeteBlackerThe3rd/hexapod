@@ -144,7 +144,7 @@ class Robot:
         self.absolute_toe_positions = [np.array([0, 0, 0])]*6
 
     def attempt_port_connection(self, port, timeout_secs=1.0):
-        serial_port = serial.Serial(port, baudrate=115200, timeout=0.5)
+        serial_port = serial.Serial(port, baudrate=115200, timeout=0.5, write_timeout=0.5)
         connected = False
         start_time = time()
         while time() - start_time < timeout_secs:
