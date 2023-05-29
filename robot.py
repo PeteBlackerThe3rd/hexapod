@@ -150,7 +150,7 @@ class Robot:
         while time() - start_time < timeout_secs:
             serial_port.write(b'V\n')
             recv = serial_port.readline().decode("utf-8")
-            if 'ip2040' in recv:
+            if 'rp2040' in recv:
                 connected = True
                 break
             sleep(0.1)
