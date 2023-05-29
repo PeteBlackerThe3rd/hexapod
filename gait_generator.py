@@ -11,6 +11,8 @@ from ply_debug_file import PLYFile
 from translate_position import translate_datum, inverse_translate_datum
 from leg_kinematics import LegKinematics, NoKinematicSolution
 
+RIDE_HEIGHT = 0.07
+
 def generate_all_leg_index_test(filename):
   """
   :param filename:
@@ -169,7 +171,7 @@ def cost_fn(state_vector, debug_filename=None):
   floor_length, centre_leg_dist_x, front_leg_dist_x, front_left_dist_y, \
       rear_leg_dist_x, rear_left_dist_y = state_vector
 
-  ride_height = 0.06
+  ride_height = RIDE_HEIGHT
 
   # create toe trajectory based upon ride height and floor length
   toe_traj = gen_walking_toe_trajectory(floor_distance=floor_length, lift_height=0.02, floor_duration=0.5)
@@ -298,7 +300,7 @@ def create_gait_trajectory(state_vector, ride_height, steps_per_sec, debug_filen
 def optimise_walking_gait():
 
   # define seed values
-  ride_height = 0.06
+  ride_height = RIDE_HEIGHT
   floor_length = 0.01
   centre_leg_dist_x = 0.18
   front_leg_dist_x = 0.115
