@@ -40,11 +40,11 @@ class LegKinematics:
     # define link lengths in meters
     self.hip_length = 26e-3
     self.thigh_length = 48.87e-3
-    self.calf_length = 52.162e-3
+    self.calf_length = 52.162e-3 + 2.0e-3 # Rubber boot adds about 2mm
 
     # define joint limits
     self.joint_low_limits = np.array([np.deg2rad(-20), np.deg2rad(-80), np.deg2rad(0)])
-    self.joint_high_limits = np.array([np.deg2rad(20), np.deg2rad(80), np.deg2rad(130)])
+    self.joint_high_limits = np.array([np.deg2rad(20), np.deg2rad(80), np.deg2rad(120)])
 
   def compute_joint_limit_margin(self, joint_angles):
     """
