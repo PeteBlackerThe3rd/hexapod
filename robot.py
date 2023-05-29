@@ -154,7 +154,7 @@ class Robot:
                 connected = True
                 break
             sleep(0.1)
-            print("connecting [%f] secs" % time())
+            print("connecting on port %s [%f] secs" % (port, time()))
 
         if connected:
             print('connected on port %s' % port)
