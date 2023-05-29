@@ -144,17 +144,17 @@ class Robot:
         self.absolute_toe_positions = [np.array([0, 0, 0])]*6
 
     def attempt_port_connection(self, port, timeout_secs=1.0):
-        serial_port = serial.Serial(port, baudrate=115200, timeout=0.5)
+        serial_port = serial.Serial(port, baudrate=115200, timeout=0.5, write_timeout=0.5)
         connected = False
         start_time = time()
-        while time() - start_time < timeout_secs:
+        while (time() - start_time) < timeout_secs:
             serial_port.write(b'V\n')
             recv = serial_port.readline().decode("utf-8")
-            if 'ip2040' in recv:
+            if 'rp2040' in recv:
                 connected = True
                 break
             sleep(0.1)
-            print("connecting [%f] secs" % time())
+            print("connecting on port %s [%f] secs" % (port, time()))
 
         if connected:
             print('connected on port %s' % port)
