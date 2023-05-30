@@ -6,6 +6,8 @@ and execute the next iteration of control
 """
 import numpy as np
 from scipy.spatial.transform import Rotation as SciRot
+from translate_position import translate_datum
+from leg_kinematics import NoKinematicSolution
 
 
 class Velocity2D:
@@ -26,11 +28,15 @@ class Velocity2D:
       """
       Modifies the 2D/3D vector or 4x4 tf matrix subject as if this velocity has been applied for scalar Seconds.
       No integration is performed so only use this for small time steps
-      :param vec:
-      :param scalar:
-      :return:
+      :param subject: 2D/3D or 4x4 numpy.ndarray
+      :param scalar: float value in seconds
+      :return: same type as subject
       """
       assert isinstance(subject, np.ndarray)
+      tf = np.eye(4)
+      rot_vec = [0, 0, self.rot_rate * scalar]
+      tf[0:3, 0:3] = SciRot.from_rotvec(rot_vec).as_matrix()
+      tf[3, 0:2] = [self.x_rate * scalar, self.y_rate * scalar]
 
       # 2D vector case
       if subject.shape == (2,):
@@ -38,28 +44,48 @@ class Velocity2D:
 
       # 3D vector case
       if subject.shape == (3,):
-        pass
+        vec = np.ones(4,)
+        vec[0:3] = subject
+        result = np.matmul(vec, tf)
+        return result[0:3]
 
       # 4x4 tf matrix case
       if subject.shape == (4, 4):
-        tf = np.eye(4)
-        rot_vec = [0, 0, self.rot_rate * scalar]
-        tf[0:3, 0:3] = SciRot.from_rotvec(rot_vec).as_matrix()
-        tf[3, 0:2] = [self.x_rate * scalar, self.y_rate * scalar]
         return np.matmul(subject, tf)
+
+    def is_zero(self):
+      """
+      checks if this velocity value is static
+      :return: True if this velocity is zero, False otherwise
+      """
+      return self.x_rate == 0.0 and self.y_rate == 0.0 and self.rot_rate == 0.0
 
 
 class DynamicGait:
 
   STEP_DURATION = 1/15  # plan in 15ths of a second time steps
 
-  def __init__(self, initial_joint_angles, kinematic_model):
+  def __init__(self, kinematic_model):
     self.kin = kinematic_model
-    self.joint_angles = initial_joint_angles
-    self.current_toe_positions = [0] * 6
 
-    self.toe_trajectories_this_step = None
-    self.toe_trajectories_next_step = None
+    # self.base_frames = get_leg_base_frames()
+
+    # crude way of setting initial toe positions
+    ride_height = 0.08
+    centre_leg_dist_x = 0.17
+    front_leg_dist_x = 0.115
+    front_leg_dist_y = 0.137
+    rear_leg_dist_x = 0.115
+    rear_leg_dist_y = -0.137
+    self.current_toe_positions = np.array([[front_leg_dist_x, front_leg_dist_y, -ride_height],
+                                           [centre_leg_dist_x, 0, -ride_height],
+                                           [rear_leg_dist_x, rear_leg_dist_y, -ride_height],
+                                           [-rear_leg_dist_x, rear_leg_dist_y, -ride_height],
+                                           [-centre_leg_dist_x, 0, -ride_height],
+                                           [-front_leg_dist_x, front_leg_dist_y, -ride_height]])
+
+    self.toe_trajectories_this_step = []
+    self.toe_trajectories_next_step = []
 
   def plan_using_body_velocity(self, velocity):
 
@@ -68,11 +94,36 @@ class DynamicGait:
     # the toes need to be moving backwards!
     toe_vel = velocity.inverse()
 
+    max_steps = int(5 / self.STEP_DURATION)
+
+    self.toe_trajectories_this_step = []
+    self.toe_trajectories_next_step = []
+
+    # for now ignore the case where velocity is zero (this means that things need to be done differently!)
+    if velocity.is_zero():
+      return
+
     for leg_idx in range(6):
       # get current toe pos, assume there is a kinematic solution for where we are!
       toe_pos = self.current_toe_positions[leg_idx]
-      traj_this_step = [toe_pos]
+      # print("leg [%d] initial toe_pos %s" % (leg_idx, toe_pos))
+      traj_this_step = []
 
       # continue to propagate this toe position along the trajectory until there is no
       # longer a valid kinematic solution
-      # while self.kin.
+      for _ in range(max_steps):
+        try:
+          #print("toe_pos %s" % toe_pos)
+          toe_pos_leg_frame = translate_datum(toe_pos, leg_idx)
+          #print("toe pos leg frame: %s" % toe_pos_leg_frame)
+          self.kin.inverse(toe_pos_leg_frame)
+          #print("kinematic solution found")
+          traj_this_step.append(toe_pos)
+          toe_pos = toe_vel.apply(toe_pos, self.STEP_DURATION)
+        except NoKinematicSolution:
+          #print("No kinematic solution found")
+          break
+
+      # print("leg [%d] completed with %d steps" % (leg_idx, len(traj_this_step)))
+
+      self.toe_trajectories_this_step.append(traj_this_step)

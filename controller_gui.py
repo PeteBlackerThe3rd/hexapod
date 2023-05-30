@@ -89,6 +89,8 @@ class MainWindow(wx.Frame):
 
     self.robot_interface = None
     self.game_pad = GamePad()
+    self.kin = Kin()
+    self.dynamic_gait = DynamicGait(self.kin)
 
     self.view_mode = ViewMode.Dynamic
 
@@ -100,7 +102,8 @@ class MainWindow(wx.Frame):
     self.base_frames = get_leg_base_frames()
     self.base_frames["body"] = np.eye(4)
     self.frames = self.base_frames
-    self.kin = Kin()
+
+    self.leg_colors = [[1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 1, 1], [0, 0, 1], [1, 0, 1]]
 
     self.canvas = ViewerCanvas(self)
     window_sizer.Add(self.canvas, proportion=2, flag=wx.EXPAND)
@@ -220,6 +223,16 @@ class MainWindow(wx.Frame):
       for _ in range(step_count):
         body_frame = robot_velocity.apply(body_frame, time_step)
         self.canvas.body_frame_velocity_preview.append(body_frame)
+
+      self.dynamic_gait.plan_using_body_velocity(robot_velocity)
+
+      self.canvas.lines.clear_lines()
+      for leg_idx, this_step_line in enumerate(self.dynamic_gait.toe_trajectories_this_step):
+        for idx in range(len(this_step_line)-1):
+          start = this_step_line[idx]
+          end = this_step_line[idx+1]
+          self.canvas.lines.add_line(start, end, self.leg_colors[leg_idx][0], self.leg_colors[leg_idx][1], self.leg_colors[leg_idx][2])
+      self.canvas.lines.update_geometry()
 
     self.canvas.Refresh()  # update_robot_pose(positions)
 

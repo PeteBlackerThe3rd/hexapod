@@ -208,8 +208,8 @@ class ViewerCanvas(glcanvas.GLCanvas):
         projection = glm.perspective(45.0, aspect_ratio, min_depth, max_depth)
         mvp = projection * model_view
 
-        # glLineWidth(3.0)
-        # self.lines.draw(mvp)
+        glLineWidth(3.0)
+        self.lines.draw(mvp)
 
         # draw axes for each frame if enabled
         for label, frame in self.main_window.frames.items():

@@ -5,15 +5,19 @@ from leg_kinematics import LegKinematics
 
 kin = LegKinematics()
 
-LEG_FRONT_RIGHT = 0
-LEG_MIDDLE_RIGHT = 1
-LEG_REAR_RIGHT = 2
-LEG_REAR_LEFT = 3
-LEG_MIDDLE_LEFT = 4
-LEG_FRONT_LEFT = 5
+LEG_FRONT_LEFT = 0
+LEG_MIDDLE_LEFT = 1
+LEG_REAR_LEFT = 2
+LEG_REAR_RIGHT = 3
+LEG_MIDDLE_RIGHT = 4
+LEG_FRONT_RIGHT = 5
 
 LEG_PIVOTS = {0:(0.0,-0.1,0.0), 1:(0.0,-0.1,0.0), 2:(0.0,-0.1,0.0), 3:(0.0,-0.1,0.0), 4:(0.0,-0.1,0.0), 5:(0.0,-0.1,0.0) } # in leg space, all legs are the same
 LEG_ANGLES = {0:40.0, 1:90.0, 2:140.0, 3:-140.0, 4:-90.0, 5:-40.0}  # Angles in relation to +ve Y - Forward in robot space
+
+
+def get_leg_base_labels():
+    return ["front_left", "middle_left", "rear_left", "rear_right", "middle_right", "front_right"]
 
 
 def get_leg_base_frames():
@@ -22,7 +26,7 @@ def get_leg_base_frames():
     frames of all six legs
     :return: dict of 4x4 ndarrays
     """
-    labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+    labels = get_leg_base_labels()
     frames = {}
     for idx, label in enumerate(labels):
         tf = np.eye(4)
