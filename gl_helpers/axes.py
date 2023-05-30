@@ -53,11 +53,13 @@ FS = '''
 in vec3 color;
 in vec3 position;
 
+uniform float alpha;
+
 out vec4 FragColor;
 
 void main(void)
 {
-    FragColor = vec4(color[0], color[1], color[2], 1.0);
+    FragColor = vec4(color[0], color[1], color[2], alpha);
 }
 '''
 
@@ -70,6 +72,7 @@ class GlAxes:
         self.ibo = None
         self.shader = None
         self.mvp_location = None
+        self.alpha_location = None
         self.initialized = False
 
         self.vertices = []
@@ -144,6 +147,7 @@ class GlAxes:
         self.shader = Shader()
         self.shader.compile(vs_src=VS, fs_src=FS)
         self.mvp_location = self.shader.get_uniform_location("MVP")
+        self.alpha_location = self.shader.get_uniform_location("alpha")
         self.vbo = VBO(geom_type=GL_TRIANGLES)
         self.vbo_col = VBO()
         self.vbo_norm = VBO()
@@ -152,12 +156,12 @@ class GlAxes:
         sizeof_float = 4
         v_dims = n_dims = 3
 
-        print("Axes init:\nv_count:%d\nvertices len:%d\ncolors len:%d\nnormals len:%d"% (
-          self.v_count,
-          len(self.vertices),
-          len(self.colors),
-          len(self.normals)
-        ))
+        # print("Axes init:\nv_count:%d\nvertices len:%d\ncolors len:%d\nnormals len:%d"% (
+        #   self.v_count,
+        #   len(self.vertices),
+        #   len(self.colors),
+        #   len(self.normals)
+        # ))
 
         self.vbo.set_vertex_attribute(component_count=v_dims,
                                       bytelength=sizeof_float * v_dims * self.v_count,
@@ -173,7 +177,7 @@ class GlAxes:
                              bytelength=4 * self.v_count,
                              data=(ctypes.c_uint * self.v_count)(*self.indices))
 
-    def draw(self, mvp):
+    def draw(self, mvp, alpha=1.0):
       """
       Draw this gl_cloud to the viewport
       :param mvp: glmMat4 model view projection matrix.
@@ -189,6 +193,7 @@ class GlAxes:
       self.vbo_norm.set_slot(2)
       self.ibo.bind()
       glUniformMatrix4fv(self.mvp_location, 1, False, glm.value_ptr(mvp))
+      glUniform1f(self.alpha_location, alpha)
       self.ibo.draw()
 
       self.ibo.unbind()

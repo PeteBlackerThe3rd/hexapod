@@ -91,8 +91,8 @@ class GLActor:
     actor_mesh = mesh.Mesh.from_file(filename)
 
     print("Loaded [%s]" % filename)
-    print("normals shape [%s]" % str(actor_mesh.normals.shape))
-    print("points shape [%s]" % str(actor_mesh.points.shape))
+    # print("normals shape [%s]" % str(actor_mesh.normals.shape))
+    # print("points shape [%s]" % str(actor_mesh.points.shape))
 
     self.v_count = actor_mesh.normals.shape[0] * 3
     self.normals = np.repeat(actor_mesh.normals, 3, axis=0).flatten()  # actor_mesh.normals.flatten()
@@ -119,12 +119,12 @@ class GLActor:
     sizeof_float = 4
     v_dims = n_dims = 3
 
-    print("Actor init:\nv_count:%d\nvertices len:%d\ncolors len:%d\nnormals len:%d" % (
-      self.v_count,
-      len(self.vertices),
-      len(self.colors),
-      len(self.normals)
-    ))
+    # print("Actor init:\nv_count:%d\nvertices len:%d\ncolors len:%d\nnormals len:%d" % (
+    #   self.v_count,
+    #   len(self.vertices),
+    #   len(self.colors),
+    #   len(self.normals)
+    # ))
 
     self.vbo.set_vertex_attribute(component_count=v_dims,
                                   bytelength=sizeof_float * v_dims * self.v_count,

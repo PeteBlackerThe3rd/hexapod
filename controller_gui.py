@@ -116,7 +116,18 @@ class MainWindow(wx.Frame):
     self.side_bar_sizer.Add(self.connect_button, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
     self.side_bar_sizer.Add(wx.StaticLine(self, wx.ID_ANY, size=wx.Size(200, -1), style=wx.LI_HORIZONTAL))
 
-
+    self.static_pose_ratio = wx.RadioButton(self, wx.ID_ANY, "Static Pose")
+    self.static_pose_ratio.Enable()
+    self.trajectory_ratio = wx.RadioButton(self, wx.ID_ANY, "Trajectory")
+    self.dynamic_walk_ratio = wx.RadioButton(self, wx.ID_ANY, "Dynamic Walk")
+    self.static_pose_ratio.Bind(wx.EVT_RADIOBUTTON, self.view_mode_ratio_evt)
+    self.trajectory_ratio.Bind(wx.EVT_RADIOBUTTON, self.view_mode_ratio_evt)
+    self.dynamic_walk_ratio.Bind(wx.EVT_RADIOBUTTON, self.view_mode_ratio_evt)
+    self.side_bar_sizer.Add(self.static_pose_ratio, 1, wx.LEFT, 20)
+    self.side_bar_sizer.Add(self.trajectory_ratio, 1, wx.LEFT, 20)
+    self.side_bar_sizer.Add(self.dynamic_walk_ratio, 1, wx.LEFT, 20)
+    self.side_bar_sizer.Add(wx.StaticLine(self, wx.ID_ANY, size=wx.Size(200, -1), style=wx.LI_HORIZONTAL))
+    self.set_view_mode(ViewMode.Static)
 
     icon = wx.Icon()
     icon.CopyFromBitmap(wx.Bitmap(os.path.join("resources", "bug_icon.png"), wx.BITMAP_TYPE_ANY))
@@ -125,6 +136,26 @@ class MainWindow(wx.Frame):
     self.Show()
 
     self.animate_timer.Start(int(1000 / 30.0))
+
+  def view_mode_ratio_evt(self, _):
+    if self.static_pose_ratio.GetValue():
+      # print("setting static view")
+      self.view_mode = ViewMode.Static
+    if self.trajectory_ratio.GetValue():
+      # print("setting trajectory view")
+      self.view_mode = ViewMode.Trajectory
+    if self.dynamic_walk_ratio.GetValue():
+      # print("setting dyanmic view")
+      self.view_mode = ViewMode.Dynamic
+
+  def set_view_mode(self, new_view_mode):
+    self.view_mode = new_view_mode
+    if new_view_mode == ViewMode.Static:
+      self.static_pose_ratio.SetValue(True)
+    if new_view_mode == ViewMode.Trajectory:
+      self.trajectory_ratio.SetValue(True)
+    if new_view_mode == ViewMode.Dynamic:
+      self.dynamic_walk_ratio.SetValue(True)
 
   def on_open_trajectory_menu(self, _):
     print("Sommat")
@@ -141,41 +172,45 @@ class MainWindow(wx.Frame):
 
   def gen_walking_gait(self, _):
       self.joint_trajectory = optimise_walking_gait()
-      print(self.joint_trajectory)
-      # positions = joints_to_all_leg_positions(joint_trajectory[0])
-      self.animate_timer.Start(int(1000 / 30.0))
-      # self.canvas.update_robot_pose(positions)
+      self.set_view_mode(ViewMode.Trajectory)
 
   def gen_test_trajectory(self, _):
       self.joint_trajectory = self.generate_testing_trajectory()
-      self.animate_timer.Start(int(1000 / 30.0))
+      self.set_view_mode(ViewMode.Trajectory)
 
   def update_frame(self, _):
-    if self.view_mode == ViewMode.Trajectory:
-      self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
-      self.status_bar.SetStatusText("laying trajectory sample %d of %d" % (self.animation_step, len(self.joint_trajectory)))
-
+    if self.view_mode == ViewMode.Static:
+      self.canvas.body_frame_velocity_preview = []
       self.frames = copy.copy(self.base_frames)
-      labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
-      joint_angles = []
-      for leg_idx, label in enumerate(labels):
-        leg_angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
-        joint_angles += leg_angles.tolist()
-        leg_frames = self.kin.forwards_all_frames(leg_angles)
-        for leg_label in leg_frames.keys():
-          leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
-          self.frames[label + "_" + leg_label] = leg_frames[leg_label]
+    if self.view_mode == ViewMode.Trajectory:
+      self.canvas.body_frame_velocity_preview = []
+      self.frames = copy.copy(self.base_frames)
 
-      if self.robot_interface is not None:
-        self.robot_interface.send_joint_angles(joint_angles)
+      if self.joint_trajectory is not None:
+        self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
+        self.status_bar.SetStatusText("laying trajectory sample %d of %d" % (self.animation_step, len(self.joint_trajectory)))
+
+        labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+        joint_angles = []
+        for leg_idx, label in enumerate(labels):
+          leg_angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
+          joint_angles += leg_angles.tolist()
+          leg_frames = self.kin.forwards_all_frames(leg_angles)
+          for leg_label in leg_frames.keys():
+            leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
+            self.frames[label + "_" + leg_label] = leg_frames[leg_label]
+
+        if self.robot_interface is not None:
+          self.robot_interface.send_joint_angles(joint_angles)
 
     if self.view_mode == ViewMode.Dynamic:
+      self.frames = copy.copy(self.base_frames)
       control_inputs = self.game_pad.get_state()
       linear_scale = 0.05  # max linear velocity (m/s)
       angular_scale = 0.5  # max angular velocity (rads/sec)
       # print(control_inputs)
       robot_velocity = Velocity2D(control_inputs['rightx'] * linear_scale,
-                                  control_inputs['righty'] * linear_scale,
+                                  -control_inputs['righty'] * linear_scale,
                                   control_inputs['leftx'] * angular_scale)
 
       body_frame = np.eye(4)

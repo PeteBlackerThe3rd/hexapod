@@ -225,12 +225,16 @@ class ViewerCanvas(glcanvas.GLCanvas):
                 actor_mvp = mvp * glm.transpose(frame_glm)
                 actor.draw(actor_mvp)
 
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         # draw body frame velocity preview if present
         if self.body_frame_velocity_preview is not None:
-            for velocity_preview_frame in self.body_frame_velocity_preview:
+            for idx, velocity_preview_frame in enumerate(self.body_frame_velocity_preview):
                 axis_mvp = mvp * glm.transpose(glm.mat4(velocity_preview_frame))
-                self.tf_axes.draw(axis_mvp)
+                alpha = 1.0 - (idx / (len(self.body_frame_velocity_preview) - 1))
+                self.tf_axes.draw(axis_mvp, alpha)
 
+        glDisable(GL_BLEND)
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_CULL_FACE)
 
