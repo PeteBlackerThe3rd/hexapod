@@ -7,12 +7,20 @@
 import os
 import wx
 import copy
+from enum import Enum
 import numpy as np
 from gl_helpers.viewer_canvas import ViewerCanvas
 from gait_generator import optimise_walking_gait
 from translate_position import joints_to_all_leg_positions, get_leg_base_frames
 from leg_kinematics import LegKinematics as Kin
 from robot import Robot, RobotConnectionFailed
+from dynamic_walking import Velocity2D, DynamicGait
+from gamepad import GamePad
+
+class ViewMode(Enum):
+  Static = 1
+  Trajectory = 2
+  Dynamic = 3
 
 
 class MainMenu(wx.MenuBar):
@@ -72,7 +80,7 @@ class MainWindow(wx.Frame):
     self.menu_bar = MainMenu(self)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_OPEN, self.on_open_trajectory_menu)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_QUIT, self.on_quit_menu)
-    self.menu_bar.bind_menu_handler(self.menu_bar.ID_CONNECT_ROBOT, self.on_connect_robot)
+    # self.menu_bar.bind_menu_handler(self.menu_bar.ID_CONNECT_ROBOT, self.on_connect_robot)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_GEN_WALKING, self.gen_walking_gait)
     self.menu_bar.bind_menu_handler(self.menu_bar.ID_GEN_TEST, self.gen_test_trajectory)
 
@@ -80,6 +88,9 @@ class MainWindow(wx.Frame):
     self.SetSizer(window_sizer)
 
     self.robot_interface = None
+    self.game_pad = GamePad()
+
+    self.view_mode = ViewMode.Dynamic
 
     self.joint_trajectory = None
     self.animation_step = 0
@@ -113,6 +124,8 @@ class MainWindow(wx.Frame):
 
     self.Show()
 
+    self.animate_timer.Start(int(1000 / 30.0))
+
   def on_open_trajectory_menu(self, _):
     print("Sommat")
 
@@ -138,22 +151,40 @@ class MainWindow(wx.Frame):
       self.animate_timer.Start(int(1000 / 30.0))
 
   def update_frame(self, _):
-    self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
-    self.status_bar.SetStatusText("laying trajectory sample %d of %d" % (self.animation_step, len(self.joint_trajectory)))
+    if self.view_mode == ViewMode.Trajectory:
+      self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
+      self.status_bar.SetStatusText("laying trajectory sample %d of %d" % (self.animation_step, len(self.joint_trajectory)))
 
-    self.frames = copy.copy(self.base_frames)
-    labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
-    joint_angles = []
-    for leg_idx, label in enumerate(labels):
-      leg_angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
-      joint_angles += leg_angles.tolist()
-      leg_frames = self.kin.forwards_all_frames(leg_angles)
-      for leg_label in leg_frames.keys():
-        leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
-        self.frames[label + "_" + leg_label] = leg_frames[leg_label]
+      self.frames = copy.copy(self.base_frames)
+      labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+      joint_angles = []
+      for leg_idx, label in enumerate(labels):
+        leg_angles = self.joint_trajectory[self.animation_step][leg_idx*3:leg_idx*3+3]
+        joint_angles += leg_angles.tolist()
+        leg_frames = self.kin.forwards_all_frames(leg_angles)
+        for leg_label in leg_frames.keys():
+          leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
+          self.frames[label + "_" + leg_label] = leg_frames[leg_label]
 
-    if self.robot_interface is not None:
-      self.robot_interface.send_joint_angles(joint_angles)
+      if self.robot_interface is not None:
+        self.robot_interface.send_joint_angles(joint_angles)
+
+    if self.view_mode == ViewMode.Dynamic:
+      control_inputs = self.game_pad.get_state()
+      linear_scale = 0.05  # max linear velocity (m/s)
+      angular_scale = 0.5  # max angular velocity (rads/sec)
+      # print(control_inputs)
+      robot_velocity = Velocity2D(control_inputs['rightx'] * linear_scale,
+                                  control_inputs['righty'] * linear_scale,
+                                  control_inputs['leftx'] * angular_scale)
+
+      body_frame = np.eye(4)
+      time_step = 1/15
+      step_count = 30
+      self.canvas.body_frame_velocity_preview = [body_frame]
+      for _ in range(step_count):
+        body_frame = robot_velocity.apply(body_frame, time_step)
+        self.canvas.body_frame_velocity_preview.append(body_frame)
 
     self.canvas.Refresh()  # update_robot_pose(positions)
 

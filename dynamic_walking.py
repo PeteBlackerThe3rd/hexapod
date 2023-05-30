@@ -41,12 +41,12 @@ class Velocity2D:
         pass
 
       # 4x4 tf matrix case
-      if subject.shape == (4,4):
+      if subject.shape == (4, 4):
         tf = np.eye(4)
         rot_vec = [0, 0, self.rot_rate * scalar]
         tf[0:3, 0:3] = SciRot.from_rotvec(rot_vec).as_matrix()
-        tf[3, 0:2] = [self.x_rate, self.y_rate] * scalar
-        return subject * tf
+        tf[3, 0:2] = [self.x_rate * scalar, self.y_rate * scalar]
+        return np.matmul(subject, tf)
 
 
 class DynamicGait:
@@ -75,4 +75,4 @@ class DynamicGait:
 
       # continue to propagate this toe position along the trajectory until there is no
       # longer a valid kinematic solution
-      while self.kin.
+      # while self.kin.

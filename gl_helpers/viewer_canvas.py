@@ -45,6 +45,8 @@ class ViewerCanvas(glcanvas.GLCanvas):
 
         self.tf_axes = GlAxes(0.03)
 
+        self.body_frame_velocity_preview = None
+
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
         self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -222,6 +224,13 @@ class ViewerCanvas(glcanvas.GLCanvas):
                 frame_glm = glm.mat4(self.main_window.frames[frame])
                 actor_mvp = mvp * glm.transpose(frame_glm)
                 actor.draw(actor_mvp)
+
+        # draw body frame velocity preview if present
+        if self.body_frame_velocity_preview is not None:
+            for velocity_preview_frame in self.body_frame_velocity_preview:
+                axis_mvp = mvp * glm.transpose(glm.mat4(velocity_preview_frame))
+                self.tf_axes.draw(axis_mvp)
+
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_CULL_FACE)
 
