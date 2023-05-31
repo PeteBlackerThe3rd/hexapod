@@ -238,18 +238,23 @@ class Robot:
                 # print(cycle, joint_pos)
                 self.send()
 
-    def send(self):
-        # limit writes to FREQUENCY Hz
-        sleep(max([(1/FREQUENCY) - (monotonic_ns() - self.last_send_time)/1e9,0]))
-        self.s.write(b"B")
-        # Send as uint16_t little endian
-        self.s.write(array('H', self.servo_pos).tobytes())
-        self.last_send_time = monotonic_ns()
+    def send(self, interpolation_steps=None):
+        # Write frequency controlled by serial lionk flow control
+        if interpolation_steps is None:
+          self.s.write(b"B")
+          # Send as uint16_t little endian
+          self.s.write(array('H', self.servo_pos).tobytes())
+        else:
+          self.s.write(b"I")
+          # Send as uint16_t little endian
+          self.s.write(array('H', self.servo_pos).tobytes())
+          self.s.write(interpolation_steps.to_bytes(1, 'little'))
 
-    def send_joint_angles(self, joint_angles):
+    def send_joint_angles(self, joint_angles, interpolation_steps=None):
         assert len(joint_angles) == 18, "send_joint_angles fails, joint_angles param doesn't contain 18 values";
         for idx, joint_angle in enumerate(joint_angles):
             self.servo_pos[idx] = calculate_servo_position(joint_angle, idx)
-        self.send()
+        self.send(interpolation_steps=interpolation_steps)
+
                 
 
