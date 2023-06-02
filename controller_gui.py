@@ -17,6 +17,7 @@ from robot import Robot, RobotConnectionFailed
 from dynamic_walking import Velocity2D, DynamicGait
 from gamepad import GamePad
 
+
 class ViewMode(Enum):
   Static = 1
   Trajectory = 2
@@ -232,6 +233,12 @@ class MainWindow(wx.Frame):
           start = this_step_line[idx]
           end = this_step_line[idx+1]
           self.canvas.lines.add_line(start, end, self.leg_colors[leg_idx][0], self.leg_colors[leg_idx][1], self.leg_colors[leg_idx][2])
+      for leg_idx, this_step_line in enumerate(self.dynamic_gait.toe_trajectories_next_step):
+        for idx in range(len(this_step_line) - 1):
+          start = this_step_line[idx]
+          end = this_step_line[idx + 1]
+          self.canvas.lines.add_line(start, end, self.leg_colors[leg_idx][0]/2, self.leg_colors[leg_idx][1]/2,
+                                     self.leg_colors[leg_idx][2]/2)
       self.canvas.lines.update_geometry()
 
     self.canvas.Refresh()  # update_robot_pose(positions)
