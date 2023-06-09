@@ -1,11 +1,12 @@
 import numpy as np
+import copy
 from scipy.spatial.transform import Rotation as SciRot
 
 
 class AnalyticFootTrajectory:
   """
   Class to store and operate on an analytical trajectory of a foot used by the free gait control algorithm.
-  Stores either a linear velocity or rotational motion.
+  Stores either a linear velocity or rotational motion and can apply this to a point in the robot frame
   """
   LINEAR = 1
   CIRCULAR = 2
@@ -15,6 +16,28 @@ class AnalyticFootTrajectory:
     self.linear_vel_m_s = np.zeros((2,))
     self.circular_centre = np.zeros((2,))
     self.circular_rate_rads_s = 0.0
+
+  @classmethod
+  def make_linear(cls, linear_vel):
+    linear_traj = AnalyticFootTrajectory(cls.LINEAR)
+    linear_traj.linear_vel_m_s = linear_vel
+    return linear_traj
+
+  @classmethod
+  def make_circular(cls, centre, angular_rate):
+    circular_traj = AnalyticFootTrajectory(cls.CIRCULAR)
+    circular_traj.circular_centre = centre
+    circular_traj.circular_rate_rads_s = angular_rate
+    return circular_traj
+
+  def propagate(self, point, time_secs):
+    if self.t_type == self.LINEAR:
+      return point + (self.linear_vel_m_s * time_secs)
+    if self.t_type == self.CIRCULAR:
+      angle = self.circular_rate_rads_s * time_secs
+      rot_mat = np.array([[np.cos(angle), -np.sin(angle)],
+                          [np.sin(angle), np.cos(angle)]])
+      return np.matmul(rot_mat, point - self.circular_centre) + self.circular_centre
 
 
 class Velocity2D:
@@ -70,36 +93,45 @@ class Velocity2D:
       """
       return self.x_rate == 0.0 and self.y_rate == 0.0 and self.rot_rate == 0.0
 
-    def compute_foot_locus(self, pos):
+    def compute_foot_trajectory(self, pos):
       pos_x, pos_y = pos
-      total = np.array((
+      total_linear_vel = np.array((
         self.x_rate + (pos_x * np.cos(self.rot_rate)) - (pos_y * np.sin(self.rot_rate)) - pos_x,
         self.y_rate + (pos_y * np.sin(self.rot_rate)) + (pos_y * np.cos(self.rot_rate)) - pos_x,
       ))
 
-      if self.rot_rate != 0:
-        radius = np.linalg.norm(total) / (2.0 * np.tan(self.rot_rate/2))
-        print("locus is a circle of radius %f" % radius)
+      if self.rot_rate == 0.0:
+        # print("trajectory is a staight line with velocity [%f, %f]" % (self.x_rate, self.y_rate))
+        return AnalyticFootTrajectory.make_linear(total_linear_vel)
       else:
-        print("locus is a staight line with velocity [%f, %f]" % (self.x_rate, self.y_rate))
+        radius = np.linalg.norm(total_linear_vel) / self.rot_rate
+        if self.rot_rate > 0.0:
+          cw_90 = np.array([[0, -1],
+                            [1,  0]])
+          centre_dir = np.matmul(cw_90, total_linear_vel / np.linalg.norm(total_linear_vel))
+        else:
+          ccw_90 = np.array([[0,  1],
+                             [-1, 0]])
+          centre_dir = np.matmul(ccw_90, total_linear_vel / np.linalg.norm(total_linear_vel))
+        centre = pos + (centre_dir * radius)
+        # print("trajectory is a circle of radius %f with centre [%f, %f]" % (radius, centre[0], centre[1]))
+        return AnalyticFootTrajectory.make_circular(centre, -self.rot_rate)
 
 
 def main():
-  toe_pos = np.array([-0.1, 0.0, 0.0])
+  init_toe_pos = np.array([-0.1, 0.0, 0.0])
+  toe_pos = copy.copy(init_toe_pos)
 
   vel = Velocity2D(0.4, 2.0, 0.1)
   inv_vel = vel.inverse()
 
-  scale = 1.0
-  for _ in range(100):
-    new_vel = Velocity2D(inv_vel.x_rate * scale, inv_vel.y_rate * scale, inv_vel.rot_rate * scale)
-    print("scale = %f" % scale)
-    inv_vel.compute_foot_locus((-0.1, 0.0))
-    scale /= 2.0
+  a_traj = inv_vel.compute_foot_trajectory((-0.1, 0.0))
 
-  for _ in range(200):
-    print("%f, %f" % (toe_pos[0], toe_pos[1]))
-    toe_pos = inv_vel.apply(np.array((toe_pos[0], toe_pos[1], toe_pos[2])), 0.5)
+  step_size = 1
+  for step in range(2000):
+    toe_pos = inv_vel.apply(np.array((toe_pos[0], toe_pos[1], toe_pos[2])), step_size)
+    a_toe_pos = a_traj.propagate((-0.1, 0.0), (step+1) * step_size)
+    print("%f, %f, , %f, %f" % (toe_pos[0], toe_pos[1], a_toe_pos[0], a_toe_pos[1]))
 
 
 if __name__ == "__main__":
