@@ -5,13 +5,15 @@ This uses the current robot state, and input velocity matrix to plan the next st
 and execute the next iteration of control
 """
 import numpy as np
+import copy
 from scipy.spatial.transform import Rotation as SciRot
 import scipy.optimize
-from translate_position import translate_datum
+from translate_position import translate_datum, inverse_translate_datum
 from leg_kinematics import NoKinematicSolution
+from foot_velocities import Velocity2D, AnalyticFootTrajectory
 
 
-class Velocity2D:
+class Velocity2D_old:
     """
     class used to represent the velocity of an object moving in 2 dimensions (X, Y, Rotation) rates
     rates are in m/s and rads/sec
@@ -73,11 +75,11 @@ class DynamicGait:
 
     # crude way of setting initial toe positions
     ride_height = 0.08
-    centre_leg_dist_x = 0.17
-    front_leg_dist_x = 0.115
-    front_leg_dist_y = 0.137
-    rear_leg_dist_x = 0.115
-    rear_leg_dist_y = -0.137
+    centre_leg_dist_x = 0.165
+    front_leg_dist_x = 0.105
+    front_leg_dist_y = 0.127
+    rear_leg_dist_x = 0.105
+    rear_leg_dist_y = -0.127
     self.current_toe_positions = np.array([[front_leg_dist_x, front_leg_dist_y, -ride_height],
                                            [centre_leg_dist_x, 0, -ride_height],
                                            [rear_leg_dist_x, rear_leg_dist_y, -ride_height],
@@ -87,6 +89,19 @@ class DynamicGait:
 
     self.toe_trajectories_this_step = []
     self.toe_trajectories_next_step = []
+
+    # generate working area line loops for each leg
+    working_area = self.kin.compute_vector_working_area(-ride_height)
+    working_area_boundary = working_area.get_boundary_points()
+    self.working_area_boundaries = []
+    self.working_area_boundary_point_count = working_area_boundary.shape[0]
+    print("working_area_boundary_point_count = %d" % self.working_area_boundary_point_count)
+    for leg_idx in range(6):
+      leg_working_area_boundary = np.zeros(working_area_boundary.shape)
+      for p_idx, point in enumerate(working_area_boundary):
+        point_copy = copy.copy(point)
+        leg_working_area_boundary[p_idx, :] = inverse_translate_datum(point_copy, leg_idx)
+      self.working_area_boundaries.append(leg_working_area_boundary)
 
     self.last_toe_trajectory = None
 
@@ -174,7 +189,7 @@ class DynamicGait:
       self.toe_trajectories_this_step.append(traj_this_step)
 
       # find optimal next step toe position
-      def next_step_cost_fn(x):
+      """def next_step_cost_fn(x):
         _, next_step_distance, __ = self.propagate_toe_position(x, leg_idx, toe_vel, opt_step_duration)
         error = 0.2 - next_step_distance
         print("next_step_cost_fn (%s) [distance %f, error %f]" % (x, next_step_distance, error))
@@ -203,4 +218,4 @@ class DynamicGait:
       print("leg[%d] next toe optimized from [%s] to [%s]" % (leg_idx, toe_pos, best_next_step))
       _, distance, next_trajectory = self.propagate_toe_position(best_next_step, leg_idx, toe_vel, opt_step_duration)
       print("next toe [%s] distance to %f mm (%d stes)" % (best_next_step, distance * 1e3, len(next_trajectory)))
-      self.toe_trajectories_next_step.append(next_trajectory)
+      self.toe_trajectories_next_step.append(next_trajectory)"""

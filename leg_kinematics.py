@@ -33,7 +33,46 @@ class NoKinematicSolution(Exception):
   pass
 
 
+class WorkingArea2D:
+  """
+  Class used to store and operate on the 2D horizontal working area for the foot
+  of a single leg.
+  This object can detect intersections of straight and curved foot trajectories with this
+  boundary and generate a render line list of it
+  """
+  def __init__(self, inner_rad, outer_rad, pos_x_angle, neg_x_angle, foot_z):
+    self.inner_rad = inner_rad
+    self.outer_rad = outer_rad
+    self.pos_x_angle = pos_x_angle
+    self.neg_x_angle = neg_x_angle
+    self.foot_z = foot_z
+
+    self.pos_x_edge_pos = np.array(np.sin(np.deg2rad(90) - pos_x_angle), np.cos(np.deg2rad(90) - pos_x_angle))
+    self.neg_x_edge_pos = np.array(np.sin(np.deg2rad(90) - neg_x_angle), np.cos(np.deg2rad(90) - neg_x_angle))
+
+  def get_boundary_points(self):
+    """
+    Generates a list of 3D point describing the boundary of thie working area
+    :return: Nx3 2D numpy ndarray
+    """
+    point_count = 60
+    points = np.zeros((point_count*2, 3))
+    for idx, angle in enumerate(np.linspace(self.pos_x_angle, self.neg_x_angle, point_count)):
+      rot_angle = angle
+      points[idx, :] = [np.sin(rot_angle) * self.inner_rad, np.cos(rot_angle) * self.inner_rad, self.foot_z]
+    for idx, angle in enumerate(np.linspace(self.neg_x_angle, self.pos_x_angle, point_count)):
+      rot_angle = angle
+      points[idx + point_count, :] = [np.sin(rot_angle) * self.outer_rad,
+                                      np.cos(rot_angle) * self.outer_rad,
+                                      self.foot_z]
+    return points
+
+
 class LegKinematics:
+  """
+  Kinematic model of a single standard hexapod leg. Can be customised to the specific
+  geometry of a particular leg, but the joint type order is fixed.
+  """
 
   def __init__(self):
 
@@ -45,6 +84,37 @@ class LegKinematics:
     # define joint limits
     self.joint_low_limits = np.array([np.deg2rad(-20), np.deg2rad(-80), np.deg2rad(0)])
     self.joint_high_limits = np.array([np.deg2rad(20), np.deg2rad(80), np.deg2rad(120)])
+
+  def compute_vector_working_area(self, foot_height):
+    """
+    Computes the two radii and two line with bound the singularity free working volume of
+    this leg.
+    :param foot_height: float, the height of the foot in the Z coordinate, so negative if below the hip
+    :return: A 2D working area object
+    """
+    min_hip_singularity_dist = 0.02  # limit of 2 cm from singularity
+    min_knee_angle = np.deg2rad(10)  # limit of 10 degrees from 'straight-leg' singularity
+
+    # solve for the maximum leg reach using trig
+    # use the cosine rule to combine the two leg links into a single length and angle
+    combined_leg_length = np.sqrt(
+      self.calf_length**2 +
+      self.thigh_length**2 -
+      2 * self.calf_length * self.thigh_length * np.cos(np.pi - min_knee_angle)
+    )
+    # use pythagoras to find the maximum leg reach
+    combined_leg_reach = np.sqrt(combined_leg_length**2 - foot_height**2)
+    max_leg_reach = combined_leg_reach + self.hip_length
+
+    # Solving for the minimum leg reach is a bit more complicated because it can be limited by three different
+    # things. The knee joint limit, the thigh joint limit, or the singularity distance
+    min_leg_reach = 0.01  # TODO
+
+    return WorkingArea2D(max(min_leg_reach, min_hip_singularity_dist),
+                         max_leg_reach,
+                         self.joint_high_limits[0],
+                         self.joint_low_limits[0],
+                         foot_height)
 
   def compute_joint_limit_margin(self, joint_angles):
     """

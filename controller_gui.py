@@ -239,6 +239,15 @@ class MainWindow(wx.Frame):
           end = this_step_line[idx + 1]
           self.canvas.lines.add_line(start, end, self.leg_colors[leg_idx][0]/2, self.leg_colors[leg_idx][1]/2,
                                      self.leg_colors[leg_idx][2]/2)
+
+      # Add leg working area boundaries
+      for leg_idx in range(6):
+        for idx in range(self.dynamic_gait.working_area_boundary_point_count):
+          start = self.dynamic_gait.working_area_boundaries[leg_idx][idx, :]
+          end = self.dynamic_gait.working_area_boundaries[leg_idx][(idx+1) % self.dynamic_gait.working_area_boundary_point_count, :]
+          self.canvas.lines.add_line(start, end, self.leg_colors[leg_idx][0], self.leg_colors[leg_idx][1],
+                                     self.leg_colors[leg_idx][2])
+
       self.canvas.lines.update_geometry()
 
     self.canvas.Refresh()  # update_robot_pose(positions)
