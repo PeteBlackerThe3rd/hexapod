@@ -81,13 +81,34 @@ class WorkingVolumeView(wx.Panel):
     self.link2_length = 40
     self.link3_length = 70
 
-    self.joint1_min = np.radians(-45)
-    self.joint1_max = np.radians(90)
+    self.joint1_min = np.radians(45)
+    self.joint1_max = np.radians(135)
     self.joint2_min = np.radians(10)
     self.joint2_max = np.radians(135)
 
     self.sample_count = 50
+    self.joint_angle_samples = None
+    self.leg_pose_lines = None
+    self.update_kinematics()
+
+  def update_kinematics(self):
     self.joint_angle_samples = self.generate_volume_outline()
+    self.leg_pose_lines = self.generate_leg_poses()
+
+  def generate_leg_poses(self):
+
+    lines = []
+    angles = [[self.joint1_min, self.joint2_min],
+              [self.joint1_max, self.joint2_min],
+              [self.joint1_min, self.joint2_max],
+              [self.joint1_max, self.joint2_max]]
+
+    for j1_angle, j2_angle in angles:
+      j1_pos, j2_pos, toe_pos = self.toe_pos(j1_angle, j2_angle)
+      lines.append([j1_pos, j2_pos])
+      lines.append([j2_pos, toe_pos])
+
+    return lines
 
   def generate_volume_outline(self):
     joint_angle_samples = []
@@ -135,8 +156,6 @@ class WorkingVolumeView(wx.Panel):
     area_size = area_max - area_min
     grid_spacing = 10
 
-    print("Paint called")
-
     # compute scale and offset to fit the area in the centre of the frame
     frame_aspect = w / float(h)
     area_aspect = area_size[0] / float(area_size[1])
@@ -150,17 +169,25 @@ class WorkingVolumeView(wx.Panel):
     dc = wx.AutoBufferedPaintDC(self)
     dc.Clear()
 
-    tl = (area_min * scale) + offset
-    size_scaled = (area_size * scale)
-    br = (area_max * scale) + offset
+    # draw grid
+    dc.SetPen(wx.Pen(wx.Colour(180, 180, 180), 1))
+    for x_pos in np.linspace(-500, 500, 100):
+      y_pos = (x_pos * scale) + offset[1]
+      dc.DrawLine(0, y_pos, w, y_pos)
+      x_pos = (x_pos * scale) + offset[0]
+      dc.DrawLine(x_pos, 0, x_pos, h)
 
-    dc.DrawRectangle(tl[0], tl[1], size_scaled[0], size_scaled[1])
-    dc.DrawLine(tl[0], tl[1], br[0], br[1])
-    dc.SetPen(wx.Pen(wx.BLACK, 5))
+    tl = ((area_min * scale) + offset).astype(int)
+    size_scaled = (area_size * scale).astype(int)
+    br = ((area_max * scale) + offset).astype(int)
+
+    # dc.DrawRectangle(tl[0], tl[1], size_scaled[0], size_scaled[1])
+    # dc.DrawLine(tl[0], tl[1], br[0], br[1])
+    dc.SetPen(wx.Pen(wx.BLACK, 1))
     # dc.DrawCircle(w / 2, h / 2, 100)
 
-    j1 = (np.array([-self.link1_length, 0]) * scale) + offset
-    dc.DrawLine(offset[0], offset[1], j1[0], j1[1])
+    j1 = ((np.array([-self.link1_length, 0]) * scale) + offset).astype(int)
+    dc.DrawLine(int(offset[0]), int(offset[1]), j1[0], j1[1])
 
     # dc.SetPen(wx.Pen(wx.GREEN, 3))
     for i in range(len(self.joint_angle_samples) - 1):
@@ -172,21 +199,24 @@ class WorkingVolumeView(wx.Panel):
         dc.SetPen(wx.Pen(wx.BLUE, 3))
       elif 150 <= i < 200:
         dc.SetPen(wx.Pen(wx.YELLOW, 3))
-      p1 = (self.joint_angle_samples[i] * scale) + offset
-      p2 = (self.joint_angle_samples[i+1] * scale) + offset
+      p1 = ((self.joint_angle_samples[i] * scale) + offset).astype(int)
+      p2 = ((self.joint_angle_samples[i+1] * scale) + offset).astype(int)
 
       # print("p1 (%s)\np2 (%s)" % (p1, p2))
       dc.DrawLine(p1[0], p1[1], p2[0], p2[1])
 
+    # draw leg poses at extremes of envelope
+    dc.SetPen(wx.Pen(wx.BLACK, 1))
+    for start, end in self.leg_pose_lines:
+      p1 = ((start * scale) + offset).astype(int)
+      p2 = ((end * scale) + offset).astype(int)
+      dc.DrawLine(p1[0], p1[1], p2[0], p2[1])
 
-# class Frame(wx.Frame):
-#   def __init__(self):
-#     super(Frame, self).__init__(None)
-#     self.SetTitle('My Title')
-#     self.SetClientSize((500, 500))
-#     self.Center()
-#     self.view = View(self)
+    # draw j0 singularity
+    singularity_en = wx.Pen(wx.RED, 3)
 
+    dc.SetPen(singularity_en)
+    dc.DrawLine(offset[0], 0, offset[0], h)
 
 class MainWindow(wx.Frame):
 
@@ -213,8 +243,17 @@ class MainWindow(wx.Frame):
     self.side_bar_sizer = wx.BoxSizer(wx.VERTICAL)
     window_sizer.Add(self.side_bar_sizer)
 
-    self.connection_state_text = wx.StaticText(self, wx.ID_ANY, "Leg Kinematics")
-    self.side_bar_sizer.Add(self.connection_state_text, 1, wx.CENTER|wx.TOP, 5)
+    self.side_bar_sizer.Add(wx.StaticText(self, wx.ID_ANY, "link 1"), 1, wx.CENTER|wx.TOP, 5)
+    self.link1_len_spin = wx.SpinCtrlDouble(self, wx.ID_ANY, initial=self.canvas.link1_length,
+                                             min=-180, max=180)
+    self.link1_len_spin.Bind(wx.EVT_SPINCTRLDOUBLE, self.update_kinematics)
+    self.side_bar_sizer.Add(self.link1_len_spin, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
+
+    self.side_bar_sizer.Add(wx.StaticText(self, wx.ID_ANY, "Joint 1"), 1, wx.CENTER|wx.TOP, 5)
+    self.link2_len_spin = wx.SpinCtrlDouble(self, wx.ID_ANY, initial=self.canvas.link2_length,
+                                             min=-180, max=180)
+    self.link2_len_spin.Bind(wx.EVT_SPINCTRLDOUBLE, self.update_kinematics)
+    self.side_bar_sizer.Add(self.link2_len_spin, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
 
     self.joint1_min_spin = wx.SpinCtrlDouble(self, wx.ID_ANY, initial=np.degrees(self.canvas.joint1_min),
                                              min=-180, max=180)
@@ -225,6 +264,12 @@ class MainWindow(wx.Frame):
                                              min=-180, max=180)
     self.joint1_max_spin.Bind(wx.EVT_SPINCTRLDOUBLE, self.update_kinematics)
     self.side_bar_sizer.Add(self.joint1_max_spin, 1, wx.CENTER | wx.TOP | wx.BOTTOM, 5)
+
+    self.side_bar_sizer.Add(wx.StaticText(self, wx.ID_ANY, "Joint 2"), 1, wx.CENTER|wx.TOP, 5)
+    self.link3_len_spin = wx.SpinCtrlDouble(self, wx.ID_ANY, initial=self.canvas.link3_length,
+                                            min=-180, max=180)
+    self.link3_len_spin.Bind(wx.EVT_SPINCTRLDOUBLE, self.update_kinematics)
+    self.side_bar_sizer.Add(self.link3_len_spin, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
 
     self.joint2_min_spin = wx.SpinCtrlDouble(self, wx.ID_ANY, initial=np.degrees(self.canvas.joint2_min),
                                              min=-180, max=180)
@@ -264,7 +309,11 @@ class MainWindow(wx.Frame):
     self.canvas.joint1_max = np.radians(self.joint1_max_spin.GetValue())
     self.canvas.joint2_min = np.radians(self.joint2_min_spin.GetValue())
     self.canvas.joint2_max = np.radians(self.joint2_max_spin.GetValue())
-    self.canvas.joint_angle_samples = self.canvas.generate_volume_outline()
+
+    self.canvas.link1_length = self.link1_len_spin.GetValue()
+    self.canvas.link2_length = self.link2_len_spin.GetValue()
+    self.canvas.link3_length = self.link3_len_spin.GetValue()
+    self.canvas.update_kinematics()
     self.canvas.Refresh()
 
   def view_mode_ratio_evt(self, _):
