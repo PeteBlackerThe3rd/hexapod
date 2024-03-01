@@ -170,12 +170,12 @@ class WorkingVolumeView(wx.Panel):
     dc.Clear()
 
     # draw grid
-    dc.SetPen(wx.Pen(wx.Colour(180, 180, 180), 1))
-    for x_pos in np.linspace(-500, 500, 100):
+    dc.SetPen(wx.Pen(wx.Colour(200, 200, 200), 1))
+    for x_pos in np.linspace(-500, 500, 101):
       y_pos = (x_pos * scale) + offset[1]
-      dc.DrawLine(0, y_pos, w, y_pos)
+      dc.DrawLine(0, int(y_pos), w, int(y_pos))
       x_pos = (x_pos * scale) + offset[0]
-      dc.DrawLine(x_pos, 0, x_pos, h)
+      dc.DrawLine(int(x_pos), 0, int(x_pos), h)
 
     tl = ((area_min * scale) + offset).astype(int)
     size_scaled = (area_size * scale).astype(int)
@@ -216,7 +216,7 @@ class WorkingVolumeView(wx.Panel):
     singularity_en = wx.Pen(wx.RED, 3)
 
     dc.SetPen(singularity_en)
-    dc.DrawLine(offset[0], 0, offset[0], h)
+    dc.DrawLine(int(offset[0]), 0, int(offset[0]), h)
 
 class MainWindow(wx.Frame):
 
