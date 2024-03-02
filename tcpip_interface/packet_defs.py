@@ -11,21 +11,24 @@ class BasePacket:
     pass
 
   def serialise_header(self, direction, packet_id, payload):
-    header = struct.pack(">BBBI", self.PROTOCOL_ID, direction, packet_id, len(payload))
-    return header + bytes(payload)
+    header = struct.pack(">BBBH", self.PROTOCOL_ID, direction, packet_id, len(payload) + 5)
+    # print("Serialising header with dir[%d] id[%0x02X] payload_len(%d)" % (direction, packet_id, len(payload)))
+    packet = header + bytes(payload)
+    # print("packet length %d bytes" % len(packet))
+    return packet
 
-  @staticmethod
-  def matches(direction, packet_id):
+  @classmethod
+  def matches(cls, direction, packet_id):
     return False
 
-  @staticmethod
+  @classmethod
   def deserialise(cls, buffer):
 
-    if len(buffer) < 7:
-      print("Failed to deserialise, buffer shorter than 7 bytes")
+    if len(buffer) < 5:
+      print("Failed to deserialise, buffer shorter than 5 bytes")
       return None
 
-    prot_id, direction, pack_id, length = struct.unpack(">BBBI", buffer[:6])
+    prot_id, direction, pack_id, length = struct.unpack(">BBBH", buffer[:6])
     if prot_id != cls.PROTOCOL_ID:
       print("Failed to deserialise, protocol ID [0x%02X] is invalid" % prot_id)
       return None
@@ -54,14 +57,14 @@ class TCAreYouAlivePacket(BasePacket):
   def __init__(self):
     pass
 
-  @staticmethod
-  def matches(self, direction, packet_id):
-    return direction == self.TC_ID and packet_id == self.PACKET_ID
+  @classmethod
+  def matches(cls, direction, packet_id):
+    return direction == cls.TC_ID and packet_id == cls.PACKET_ID
 
   def serialise(self):
     return self.serialise_header(self.TC_ID, self.PACKET_ID, [])
 
-  @staticmethod
+  @classmethod
   def deserialise(cls, buffer):
     if len(buffer) == 0:
       return TCAreYouAlivePacket()
@@ -77,9 +80,9 @@ class TMIAmAlivePacket(BasePacket):
   def __init__(self):
     pass
 
-  @staticmethod
-  def matches(self, direction, packet_id):
-    return direction == self.TM_ID and packet_id == self.PACKET_ID
+  @classmethod
+  def matches(cls, direction, packet_id):
+    return direction == cls.TM_ID and packet_id == cls.PACKET_ID
 
   def serialise(self):
     return self.serialise_header(self.TC_ID, self.PACKET_ID, [])
