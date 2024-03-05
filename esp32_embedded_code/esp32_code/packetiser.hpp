@@ -4,11 +4,12 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include "buffer.hpp"
 
 namespace Packetiser{
   
 	enum PacketType { packet = 0, garbage = 1};
-  typedef std::vector<uint8_t> Buffer;
+  //typedef std::vector<uint8_t> Buffer;
   typedef std::vector<std::pair<Buffer,PacketType>> PacketQueue;
 
 
