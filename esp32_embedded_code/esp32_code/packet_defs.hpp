@@ -32,12 +32,26 @@ public:
 
   static BasePacketPtr deserialise(Buffer& buffer);
   virtual std::string toString() = 0;
+  virtual BufferPtr serialise() = 0;
+
+protected:
+
+  void addHeader(BufferPtr packetBuffer, uint8_t direction, uint8_t packetId) {
+    packetBuffer->insert(packetBuffer->begin(), 5, 0);
+    (*packetBuffer.get())[0] = protocolId;
+    (*packetBuffer.get())[1] = direction;
+    (*packetBuffer.get())[2] = packetId;
+    uint16_t length = packetBuffer->size(); 
+    (*packetBuffer.get())[3] = length & 0xff;
+    (*packetBuffer.get())[4] = length >> 8;
+  };
+
+  static constexpr uint8_t TCId = 0x01;
+  static constexpr uint8_t TMId = 0x02;
 
 private:
 
   static constexpr uint8_t protocolId = 0xF2;
-  static constexpr uint8_t TCId = 0x01;
-  static constexpr uint8_t TMId = 0x02;
 };
 
 class TCAreYouAlivePacket : public BasePacket
@@ -45,7 +59,57 @@ class TCAreYouAlivePacket : public BasePacket
 public:
   static size_t expectedSize(Buffer& buffer) { return 5; };
   std::string toString() { return "TCAreYouAlivePacket"; };
+  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    addHeader(packetBuffer, TMId, packetId);
+    return packetBuffer;
+  };
   static constexpr uint8_t packetId = 0x10;
+};
+
+class TMIAmAlivePacket : public BasePacket
+{
+public:
+  static size_t expectedSize(Buffer& buffer) { return 5; };
+  std::string toString() { return "TMIAmAlivePacket"; };
+  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    addHeader(packetBuffer, TMId, packetId);
+    return packetBuffer;
+  };
+  static constexpr uint8_t packetId = 0x11;
+};
+
+class TMHouseKeepingPacket : public BasePacket
+{
+public:
+  TMHouseKeepingPacket(uint16_t sequenceId) {
+    this->sequenceId = sequenceId;
+    socketConnectionCount = 0;
+    motorsOn = 0;
+    batteryVoltage100thsVolt = 0;
+  };
+  static size_t expectedSize(Buffer& buffer) { return 11; };
+  std::string toString() { return "TMHouseKeepingPacket"; };
+  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    
+    packetBuffer->push_back(sequenceId & 0xff);
+    packetBuffer->push_back(sequenceId >> 8);
+    packetBuffer->push_back(socketConnectionCount);
+    packetBuffer->push_back(motorsOn);
+    packetBuffer->push_back(batteryVoltage100thsVolt & 0xff);
+    packetBuffer->push_back(batteryVoltage100thsVolt >> 8);
+
+    addHeader(packetBuffer, TMId, 0x12);//packetId);
+    return packetBuffer;
+  };
+  static constexpr uint8_t packetId = 0x12;
+
+  uint16_t sequenceId;
+  uint8_t socketConnectionCount;
+  uint8_t motorsOn;
+  uint16_t batteryVoltage100thsVolt;
 };
 
 BasePacketPtr BasePacket::deserialise(Buffer& buffer)

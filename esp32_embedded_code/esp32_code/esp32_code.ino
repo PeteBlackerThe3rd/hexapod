@@ -34,18 +34,37 @@ public:
     portListener.begin();
   };
 
-  size_t getPacketQueueSize()
+  size_t getPacketRxQueueSize()
   {
-    std::lock_guard<std::mutex> lck(packetQueueMutex);
-    return packetQueue.size();
+    std::lock_guard<std::mutex> lck(packetRxQueueMutex);
+    return packetRxQueue.size();
   };
 
   BasePacketPtr popPacket()
   {
-    std::lock_guard<std::mutex> lck(packetQueueMutex);
-    BasePacketPtr packet = packetQueue[0];
-    packetQueue.erase(packetQueue.begin());
+    std::lock_guard<std::mutex> lock(packetRxQueueMutex);
+    BasePacketPtr packet = packetRxQueue[0];
+    packetRxQueue.erase(packetRxQueue.begin());
     return packet;
+  }
+
+  bool socketConected()
+  {
+    //std::lock_guard<std::mutex> lock(socketConnectedMutex);
+    return socketConnected;
+  }
+
+  bool sendPacket(BasePacketPtr packet)
+  {
+    {
+      //std::lock_guard<std::mutex> lock(socketConnectedMutex);
+      if (!socketConnected)
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(packetTxQueueMutex);
+    packetTxQueue.push_back(packet);
+    return true;
   }
 
 private:
@@ -61,55 +80,92 @@ private:
 
       vTaskDelay(1);
       WiFiClient client = commsThread->portListener.available();
-      Packetiser::PacketQueue packetQueue;
+      Packetiser::PacketQueue rawPacketQueue;
 
       if (client) {
+        {
+          //std::lock_guard<std::mutex> lock(socketConnectedMutex);
+          commsThread->socketConnected = true;
+        }
         Serial.println("Socket connected");
 
         while (client.connected()) {
 
           vTaskDelay(1);
 
-          while (client.available()>0) {
+          while (client.available() > 0) {
             char c = client.read();
             Buffer charBuf = {c};
-            commsThread->packetiser.processInput(charBuf, packetQueue, true, true);
+            commsThread->packetiser.processInput(charBuf, rawPacketQueue, true, true);
             // Serial.print(c);
             client.write(c);
           }
 
-          if (packetQueue.size() > 0) {
-            if (packetQueue[0].second == Packetiser::PacketType::packet) {
+          if (rawPacketQueue.size() > 0) {
+            if (rawPacketQueue[0].second == Packetiser::PacketType::packet) {
               try {
-                BasePacketPtr packet = BasePacket::deserialise(packetQueue[0].first);
-                std::lock_guard<std::mutex> lck(commsThread->packetQueueMutex);
-                commsThread->packetQueue.push_back(packet);
+                BasePacketPtr packet = BasePacket::deserialise(rawPacketQueue[0].first);
+                std::lock_guard<std::mutex> lck(commsThread->packetRxQueueMutex);
+                commsThread->packetRxQueue.push_back(packet);
                 Serial.print("Decoded: ");
                 Serial.println(packet->toString().c_str());
               }
               catch (BaseException& e) {
                 Serial.print("Failed to deserialise packet: ");
                 Serial.println(e.what().c_str());
+                
+                for (uint8_t byte : rawPacketQueue[0].first) {
+                  Serial.print(byte < 16 ? "0" : "");
+                  Serial.print(byte, HEX);
+                  Serial.print(" ");
+                }
+                Serial.println(" ");
               }
-              Serial.print("Recieved packet: ");
+              //Serial.print("Recieved packet: ");
             }
-            else
+            else {
               Serial.print("Recieved garbage: ");
             
-            for (uint8_t byte : packetQueue[0].first) {
-              Serial.print(byte < 16 ? "0" : "");
-              Serial.print(byte, HEX);
-              Serial.print(" ");
+              for (uint8_t byte : rawPacketQueue[0].first) {
+                Serial.print(byte < 16 ? "0" : "");
+                Serial.print(byte, HEX);
+                Serial.print(" ");
+              }
+              Serial.println(" ");
             }
-            Serial.println(" ");
-            packetQueue.erase(packetQueue.begin());
+
+            rawPacketQueue.erase(rawPacketQueue.begin());
           }
 
-          delay(10);
+          vTaskDelay(1);
+
+          //bool packetToSend = false;
+          BasePacketPtr packetToSend;
+          {
+            std::lock_guard<std::mutex> lock(commsThread->packetTxQueueMutex);
+            if (commsThread->packetTxQueue.size() > 0) {
+              packetToSend = commsThread->packetTxQueue[0];
+              commsThread->packetTxQueue.erase(commsThread->packetTxQueue.begin());
+            }
+          }
+
+          // if a packet was waited to be send in the TX queue
+          if (packetToSend) {
+            BufferPtr rawPacket = packetToSend->serialise();
+            Buffer encapsulatedPacket = commsThread->packetiser.encapsulatePacket(*rawPacket.get());
+            for (uint8_t byte : encapsulatedPacket)
+              client.write(byte);
+          }
+
+          //delay(10);
         }
 
         client.stop();
         Serial.println("Socket disconnected");
+        {
+          //std::lock_guard<std::mutex> lock(socketConnectedMutex);
+          commsThread->socketConnected = false;
+        }
       }
     }
   };
@@ -122,12 +178,21 @@ private:
   static constexpr char* ssid = "Hexapod_v2";
   static constexpr char* password = "testing_testing123";
 
-  // note haven't implemented the packet class hierarchy so this is void* for now
-  std::mutex packetQueueMutex;
-  std::vector<BasePacketPtr> packetQueue;
+  std::mutex packetRxQueueMutex;
+  std::vector<BasePacketPtr> packetRxQueue;
+
+  std::mutex packetTxQueueMutex;
+  std::vector<BasePacketPtr> packetTxQueue;
+
+  std::mutex socketConnectedMutex;
+  bool socketConnected;
 };
 
 CommsThread* commsThread;
+
+uint32_t lastHKTMTime = 0;
+uint16_t lastHKSeqId = 0;
+uint32_t lastMotorTMTime = 0;
 
 void setup()
 {
@@ -139,11 +204,29 @@ void setup()
 void loop()
 {
   //Serial.println("Something to stop core#1 watchdog triggering");
-  delay(100);
+  delay(10);
 
-  while (commsThread->getPacketQueueSize() > 0) {
+  while (commsThread->getPacketRxQueueSize() > 0) {
     BasePacketPtr packet = commsThread->popPacket();
     Serial.print("Handling: ");
     Serial.println(packet->toString().c_str());
+  }
+
+  // if the socket is connected then check if telemetry needs sending
+  if (commsThread->socketConected()) {
+    
+    uint32_t timeNow = millis();
+    
+    // if more than 1 second has passed since the last 
+    if (timeNow - lastHKTMTime > 100) {
+      lastHKTMTime = timeNow;
+
+      auto hkPacket = new TMHouseKeepingPacket(++lastHKSeqId);
+      hkPacket->socketConnectionCount = 5;
+      hkPacket->motorsOn = 1;
+      hkPacket->batteryVoltage100thsVolt = 685; 
+
+      commsThread->sendPacket(BasePacketPtr(hkPacket));
+    }
   }
 }

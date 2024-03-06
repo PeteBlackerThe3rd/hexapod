@@ -53,8 +53,8 @@ class RobotTCPIPInterface:
         new_packets = self.packetiser.process_input(new_data, return_garbage=True)
         for i, packet in enumerate(new_packets):
           if packet[0] == 'Packet':
-            hex_str = ''.join("{:02x}".format(x) for x in packet[1])
-            print("Received packet [%s]" % hex_str)
+            hex_str = ' '.join("{:02x}".format(x) for x in packet[1])
+            # print("Received packet [%s]" % hex_str)
             decoded_packet = BasePacket.deserialise(packet[1])
 
             if isinstance(decoded_packet, TMIAmAlivePacket):
@@ -64,6 +64,9 @@ class RobotTCPIPInterface:
             if isinstance(decoded_packet, TCAreYouAlivePacket):
               print("Are you alive! TC packet received")
               self.i_am_alive_received.set()
+
+            if isinstance(decoded_packet, TMHouseKeepingPacket):
+              print(decoded_packet)
 
             # add further packet types as they're developed
 
