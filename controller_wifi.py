@@ -17,7 +17,7 @@ from robot import Robot, RobotConnectionFailed
 from dynamic_walking import Velocity2D, DynamicGait
 from gamepad import GamePad
 from tcpip_interface.robot_tcpip_interface import RobotTCPIPInterface
-
+from tcpip_interface.packet_defs import TCManualJointPositionPacket
 
 class ViewMode(Enum):
   Static = 1
@@ -119,7 +119,12 @@ class MainWindow(wx.Frame):
     self.connect_button = wx.Button(self, wx.ID_ANY, label="Connect Robot")
     self.connect_button.Bind(wx.EVT_BUTTON, self.on_connect_robot)
     self.side_bar_sizer.Add(self.connect_button, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
+
     self.side_bar_sizer.Add(wx.StaticLine(self, wx.ID_ANY, size=wx.Size(200, -1), style=wx.LI_HORIZONTAL))
+
+    self.test_servo_position = wx.Slider(self, wx.ID_ANY, size=(200,-1), value=32768, minValue=0, maxValue=65535)
+    self.test_servo_position.Bind(wx.EVT_SLIDER, self.test_servo_change)
+    self.side_bar_sizer.Add(self.test_servo_position)
 
     self.static_pose_ratio = wx.RadioButton(self, wx.ID_ANY, "Static Pose")
     self.static_pose_ratio.Enable()
@@ -177,6 +182,11 @@ class MainWindow(wx.Frame):
         self.connection_state_text.SetLabel("Could not detect robot")
     except RobotConnectionFailed as e:
       self.connection_state_text.SetLabel(str(e))
+
+  def test_servo_change(self, event):
+    if self.robot_interface.is_connected():
+      self.robot_interface.send_packet(TCManualJointPositionPacket(0, 1, self.test_servo_position.GetValue()))
+      print("Sending [%d] test servo command" % self.test_servo_position.GetValue())
 
   def gen_walking_gait(self, _):
       self.joint_trajectory = optimise_walking_gait()

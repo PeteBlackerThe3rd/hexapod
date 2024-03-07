@@ -33,6 +33,7 @@ public:
   static BasePacketPtr deserialise(Buffer& buffer);
   virtual std::string toString() = 0;
   virtual BufferPtr serialise() = 0;
+  virtual uint8_t getId() = 0;
 
 protected:
 
@@ -57,6 +58,7 @@ private:
 class TCAreYouAlivePacket : public BasePacket
 {
 public:
+  uint8_t getId() { return packetId; };
   static size_t expectedSize(Buffer& buffer) { return 5; };
   std::string toString() { return "TCAreYouAlivePacket"; };
   BufferPtr serialise() {
@@ -67,9 +69,48 @@ public:
   static constexpr uint8_t packetId = 0x10;
 };
 
+class TCManualJointPositionPacket : public BasePacket
+{
+public:
+  TCManualJointPositionPacket(Buffer& buffer) {
+    jointIndex = buffer[5];
+    driveType = buffer[6];
+    drivePosition = buffer[7] | ((uint16_t)buffer[8]) << 8;
+  };
+  uint8_t getId() { return packetId; };
+  static size_t expectedSize(Buffer& buffer) { return 9; };
+  std::string toString() {
+    std::string str = "TCManualJointPositionPacket: Joint:" + std::to_string(jointIndex) + " Drive Type:";
+    switch(driveType) {
+      case driveTypeFeedback: str += "Feedback goal "; break;
+      case driveTypeServoDutyCycle: str += "Servo duty cycle "; break;
+      case driveTypeAngle: str += "Angle goal "; break;
+    }
+    str += "position:" + std::to_string(drivePosition);
+    return str;
+  };
+  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    // TODO add packet contents (not really needed on embedded side)
+    addHeader(packetBuffer, TMId, packetId);
+    return packetBuffer;
+  };
+
+  uint8_t jointIndex;
+  uint8_t driveType;
+  uint16_t drivePosition;
+
+  static constexpr uint8_t driveTypeFeedback = 0;
+  static constexpr uint8_t driveTypeServoDutyCycle = 1;
+  static constexpr uint8_t driveTypeAngle = 2;
+  
+  static constexpr uint8_t packetId = 0xA0;
+};
+
 class TMIAmAlivePacket : public BasePacket
 {
 public:
+  uint8_t getId() { return packetId; };
   static size_t expectedSize(Buffer& buffer) { return 5; };
   std::string toString() { return "TMIAmAlivePacket"; };
   BufferPtr serialise() {
@@ -83,6 +124,7 @@ public:
 class TMHouseKeepingPacket : public BasePacket
 {
 public:
+  uint8_t getId() { return packetId; };
   TMHouseKeepingPacket(uint16_t sequenceId) {
     this->sequenceId = sequenceId;
     socketConnectionCount = 0;
@@ -111,28 +153,5 @@ public:
   uint8_t motorsOn;
   uint16_t batteryVoltage100thsVolt;
 };
-
-BasePacketPtr BasePacket::deserialise(Buffer& buffer)
-{
-  if (buffer.size() < 5)
-    throw(InvalidPacketLength("Buffer size (" + std::to_string(buffer.size()) + ") is less than minimum packet size"));
-
-  if (buffer[0] != protocolId)
-    throw(InvalidProtocolId("Initial byte (" + std::to_string(buffer[0]) + ") is not protocol Id (" + std::to_string(protocolId) + ")"));
-  
-  if (buffer[1] != TCId && buffer[1] != TMId)
-    throw(InvalidDirectionId("Invalid direction Id (" + std::to_string(buffer[1]) + ")"));
-
-  // TODO check length
-
-  uint8_t packetId = buffer[2];
-  switch(packetId) {
-    case TCAreYouAlivePacket::packetId: 
-      if (buffer.size() == TCAreYouAlivePacket::expectedSize(buffer)) 
-        return BasePacketPtr(new TCAreYouAlivePacket());
-      throw InvalidPacketLength("Buffer length invalid for TCAreYouAlivePacket");
-  }
-};
-
 
 #endif // __PACKET_DEFS_HPP__

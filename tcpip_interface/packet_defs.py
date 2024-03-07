@@ -73,6 +73,33 @@ class TCAreYouAlivePacket(BasePacket):
       return None
 
 
+class TCManualJointPositionPacket(BasePacket):
+
+  PACKET_ID = 0xA0
+
+  def __init__(self, jointIdx, driveType, position):
+    self.joint_idx = jointIdx
+    self.drive_type = driveType
+    self.position = position
+
+  @classmethod
+  def matches(cls, direction, packet_id):
+    return direction == cls.TC_ID and packet_id == cls.PACKET_ID
+
+  def serialise(self):
+    buffer = struct.pack("<BBH", self.joint_idx, self.drive_type, self.position)
+    return self.serialise_header(self.TC_ID, self.PACKET_ID, buffer)
+
+  @classmethod
+  def deserialise(cls, buffer):
+    if len(buffer) == 4:
+      joint_idx, drive_type, position = struct.unpack("<BBH", buffer)
+      return TCManualJointPositionPacket(joint_idx, drive_type, position)
+    else:
+      print("Failed to deserialise TCManualJointPositionPacket, payload length not 4 bytes")
+      return None
+
+
 class TMIAmAlivePacket(BasePacket):
 
   PACKET_ID = 0x11
