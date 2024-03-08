@@ -196,7 +196,7 @@ class LegKinematics:
 
     # link one is a translation by hip length and rotation
     frames["link_1"][0:3, 0:3] = SciRot.from_rotvec([joint_angles[1], 0, 0]).as_matrix()
-    frames["link_1"][3, 1] = self.hip_length
+    frames["link_1"][3, 1] = 0.043  # self.hip_length
     frames["link_1"] = np.matmul(frames["link_1"], frames["link_0"])
 
     # link two is translation by thigh length and rotation

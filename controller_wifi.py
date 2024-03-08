@@ -197,6 +197,9 @@ class MainWindow(wx.Frame):
       self.set_view_mode(ViewMode.Trajectory)
 
   def update_frame(self, _):
+
+    animation_speed = 10
+
     if self.view_mode == ViewMode.Static:
       self.canvas.body_frame_velocity_preview = []
       self.frames = copy.copy(self.base_frames)
@@ -205,7 +208,7 @@ class MainWindow(wx.Frame):
       self.frames = copy.copy(self.base_frames)
 
       if self.joint_trajectory is not None:
-        self.animation_step = (self.animation_step + 1) % len(self.joint_trajectory)
+        self.animation_step = (self.animation_step + animation_speed) % len(self.joint_trajectory)
         self.status_bar.SetStatusText("laying trajectory sample %d of %d" % (self.animation_step, len(self.joint_trajectory)))
 
         labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
@@ -219,7 +222,8 @@ class MainWindow(wx.Frame):
             self.frames[label + "_" + leg_label] = leg_frames[leg_label]
 
         if self.robot_interface is not None:
-          self.robot_interface.send_joint_angles(joint_angles)
+          pass
+          # self.robot_interface.send_joint_angles(joint_angles)
 
     if self.view_mode == ViewMode.Dynamic:
       self.frames = copy.copy(self.base_frames)
