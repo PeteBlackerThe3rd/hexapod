@@ -201,8 +201,29 @@ class MainWindow(wx.Frame):
     animation_speed = 10
 
     if self.view_mode == ViewMode.Static:
+      print("Static update")
       self.canvas.body_frame_velocity_preview = []
       self.frames = copy.copy(self.base_frames)
+
+      self.robot_interface.robot_state_mutex.acquire()
+      if self.robot_interface.robot_state is not None:
+        labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
+        joint_angles = []
+        for leg_idx, label in enumerate(labels):
+          # leg_angles = [self.robot_interface.robot_state.joint_states[leg_idx*3+0].feedback_angle_mrads / 1000.0,
+          #               self.robot_interface.robot_state.joint_states[leg_idx*3+1].feedback_angle_mrads / 1000.0,
+          #               self.robot_interface.robot_state.joint_states[leg_idx*3+2].feedback_angle_mrads / 1000.0]
+          leg_angles = [0.0, 0.0, 0.0]
+          leg_angles[2] = self.robot_interface.robot_state.joint_states[2].feedback_angle_mrads / 1000.0
+          # print(self.robot_interface.robot_state)
+          # print(dir(self.robot_interface.robot_state))
+          joint_angles.extend(leg_angles)
+          leg_frames = self.kin.forwards_all_frames(leg_angles)
+          for leg_label in leg_frames.keys():
+            leg_frames[leg_label] = np.matmul(leg_frames[leg_label], self.frames[label])
+            self.frames[label + "_" + leg_label] = leg_frames[leg_label]
+      self.robot_interface.robot_state_mutex.release()
+
     if self.view_mode == ViewMode.Trajectory:
       self.canvas.body_frame_velocity_preview = []
       self.frames = copy.copy(self.base_frames)

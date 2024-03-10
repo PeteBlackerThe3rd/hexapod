@@ -154,4 +154,43 @@ public:
   uint16_t batteryVoltage100thsVolt;
 };
 
+class TMRobotStatePacket : public BasePacket
+{
+public:
+  uint8_t getId() { return packetId; };
+  TMRobotStatePacket(JointState* jointStates) {
+    this->jointStates = jointStates;
+    ownsMemory = false;
+  };
+  ~TMRobotStatePacket() {
+    if (ownsMemory)
+      delete[] jointStates;
+  }
+  static size_t expectedSize(Buffer& buffer) { return (10 * 18) + 5; };
+  std::string toString() { return "TMHouseKeepingPacket"; };
+  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    packetBuffer->reserve((10*18)+5);
+    for (int j=0; j<18; ++j) {
+      packetBuffer->push_back(jointStates[j].rawFeedback & 0xff);
+      packetBuffer->push_back(jointStates[j].rawFeedback >> 8);
+      packetBuffer->push_back(jointStates[j].feedbackAngle_mrads & 0xff);
+      packetBuffer->push_back(jointStates[j].feedbackAngle_mrads >> 8);
+      packetBuffer->push_back(jointStates[j].current_mA & 0xff);
+      packetBuffer->push_back(jointStates[j].current_mA >> 8);
+      packetBuffer->push_back(jointStates[j].driveDutyCycle & 0xff);
+      packetBuffer->push_back(jointStates[j].driveDutyCycle >> 8);
+      packetBuffer->push_back(jointStates[j].goalAngle_mrads & 0xff);
+      packetBuffer->push_back(jointStates[j].goalAngle_mrads >> 8);
+    }
+
+    addHeader(packetBuffer, TMId, 0x13);//packetId);
+    return packetBuffer;
+  };
+  static constexpr uint8_t packetId = 0x13;
+
+  JointState* jointStates;
+  bool ownsMemory;
+};
+
 #endif // __PACKET_DEFS_HPP__

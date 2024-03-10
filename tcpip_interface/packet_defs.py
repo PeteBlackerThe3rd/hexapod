@@ -163,3 +163,59 @@ class TMHouseKeepingPacket(BasePacket):
     else:
       print("Failed to deserialise House Keeping TM, payload not 6 bytes in length")
       return None
+
+
+class JointState:
+
+  def __init__(self):
+    self.raw_feedback = 0
+    self.feedback_angle_mrads = 0
+    self.current_mA = 0
+    self.drive_duty_cycle = 0
+    self.goal_angle_mrads = 0
+
+
+class TMRobotStatePacket(BasePacket):
+
+  PACKET_ID = 0x13
+
+  def __init__(self):
+    self.joint_states = []
+    for _ in range(18):
+      self.joint_states.append(JointState())
+
+  def __str__(self):
+    desc = "RobotState Packet: "
+    desc += "J0 angle: %f rads" % (self.joint_states[2].feedback_angle_mrads / 1000.0)
+    return desc
+
+  @classmethod
+  def matches(cls, direction, packet_id):
+    return direction == cls.TM_ID and packet_id == cls.PACKET_ID
+
+  def serialise(self):
+    buffer = bytearray()
+    for joint_state in self.joint_states:
+      buffer.extend(struct.pack("<HhHHh",
+                                joint_state.raw_feedback,
+                                joint_state.feedback_angle_mrads,
+                                joint_state.current_mA,
+                                joint_state.drive_duty_cycle,
+                                joint_state.goal_angle_mrads))
+    return self.serialise_header(self.TC_ID, self.PACKET_ID, buffer)
+
+  @classmethod
+  def deserialise(cls, buffer):
+    if len(buffer) == 180:
+      rs_packet = TMRobotStatePacket()
+      for j in range(18):
+        (rs_packet.joint_states[j].raw_feedback,
+         rs_packet.joint_states[j].feedback_angle_mrads,
+         rs_packet.joint_states[j].current_mA,
+         rs_packet.joint_states[j].drive_duty_cycle,
+         rs_packet.joint_states[j].goal_angle_mrads) = struct.unpack("<HhHHh", buffer[j*10:j*10+10])
+
+      return rs_packet
+    else:
+      print("Failed to deserialise House Keeping TM, payload not 6 bytes in length")
+      return None

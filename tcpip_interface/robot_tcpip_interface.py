@@ -19,6 +19,9 @@ class RobotTCPIPInterface:
     self.decoder_thread = threading.Thread(target=self.decoder_thread_entry)
     self.decoder_shutdown = threading.Event()
 
+    self.robot_state = None
+    self.robot_state_mutex = threading.Lock()
+
     self.i_am_alive_received = threading.Event()
 
   def connect(self):
@@ -67,6 +70,13 @@ class RobotTCPIPInterface:
 
             if isinstance(decoded_packet, TMHouseKeepingPacket):
               print(decoded_packet)
+
+            if isinstance(decoded_packet, TMRobotStatePacket):
+              print(decoded_packet)
+              self.robot_state_mutex.acquire()
+              self.robot_state = decoded_packet
+              self.robot_state_mutex.release()
+              # print(decoded_packet)
 
             # add further packet types as they're developed
 

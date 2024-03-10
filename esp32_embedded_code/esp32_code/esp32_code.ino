@@ -6,25 +6,30 @@ public:
   
   enum class MotorState { On = 1, Off = 0 };
 
-  class JointState {
+  /*class JointState {
   public:
     uint16_t rawFeedback;
-    uint16_t current;
+    int16_t feedbackAngle_mrads;
+    uint16_t current_mA;
     uint16_t drivePosition;
-    uint16_t goalFeedbackPos;
-  };
+    uint16_t goalAngle_mrads;
+  };*/
   
   RobotInterface() {
     motorState == MotorState::Off;
 
     for (unsigned int j=0; j<18; ++j) {
-      jointStates[j].drivePosition = 32767; // 50% of servo PWM range for now
+      jointStates[j].driveDutyCycle = 32767; // 50% of servo PWM range for now
+      jointStates[j].feedbackAngle_mrads = 0;
     }
   };
 
   void readJointStates() {
 
-    jointStates[0].rawFeedback = analogRead(36);
+    float feedbackAngleCoeff = (3.141592654 * 1000.0 ) / 2920.0;
+
+    jointStates[2].rawFeedback = analogRead(36);
+    jointStates[2].feedbackAngle_mrads = jointStates[2].rawFeedback * feedbackAngleCoeff;
   };
 
   void setMotorState(MotorState newMotorState) {
@@ -42,7 +47,10 @@ RobotInterface* robotInterface;
 
 uint32_t lastHKTMTime = 0;
 uint16_t lastHKSeqId = 0;
-uint32_t lastMotorTMTime = 0;
+
+uint32_t lastRSTMTime = 0;
+uint16_t lastRSSeaId = 0;
+//uint32_t lastMotorTMTime = 0;
 
 void setup()
 {
@@ -75,10 +83,10 @@ void loop()
     uint32_t timeNow = millis();
     
     // if more than 1 second has passed since the last 
-    if (timeNow - lastHKTMTime > 250) {
+    if (timeNow - lastHKTMTime > 1000) {
       lastHKTMTime = timeNow;
 
-      robotInterface->readJointStates();
+      //robotInterface->readJointStates();
 
       auto hkPacket = new TMHouseKeepingPacket(++lastHKSeqId);
       hkPacket->socketConnectionCount = 5;
@@ -86,6 +94,15 @@ void loop()
       hkPacket->batteryVoltage100thsVolt = robotInterface->jointStates[0].rawFeedback; 
 
       commsThread->sendPacket(BasePacketPtr(hkPacket));
+    }
+
+    if (timeNow - lastRSTMTime > 100) {
+      lastRSTMTime = timeNow;
+
+      robotInterface->readJointStates();
+
+      auto robotStatePacket = new TMRobotStatePacket(robotInterface->jointStates);
+      commsThread->sendPacket(BasePacketPtr(robotStatePacket));
     }
   }
 }
