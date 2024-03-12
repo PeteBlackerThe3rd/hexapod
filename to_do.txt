@@ -1,0 +1,35 @@
+
+  Hexapod V2 Task List
+------------------------
+
+  CAD
+-------
+
+[ ] Fix alignment of idle bearing with servo shaft axis
+[ ] Update joints 1 and 2 to have a separate servo horn part attached by screws
+[ ] Increase distance between idle servo and horn faces by 1mm
+[ ] Redesign link 3 completely to be more printer friendly and less weird looking
+[ ] Reduce end stops to +/- 5 degrees from 10 degrees
+[ ] Design joint mid location calibration jigs
+
+  Software
+------------
+
+[ ] Add time sync functionality
+[ ] Add feedback calibration mode for each joint and position
+[ ] Add standby mode
+[ ] Add Servo PWM calibration mode for each joint
+[ ] Fix rebooting ESP32 issue
+[ ] Clean-up robot connection GUI area and add basic HK view and TM counting
+     Uptime, Batt voltage, mode, motor status.
+[ ] Add calibration save to eeprom telecommand
+[ ] Add load calibration on bootup
+[ ] Add re-load calibration from eeprom telecommand
+
+  Electronics
+---------------
+
+[ ] Add off-board ADC for feedback
+[ ] Add off-board PWM for control
+[ ] Add current sensor to one servo
+[ ] Measure current over PWM cycle and see how it looks

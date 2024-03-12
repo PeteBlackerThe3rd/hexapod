@@ -210,11 +210,11 @@ class MainWindow(wx.Frame):
         labels = ["front_right", "middle_right", "rear_right", "rear_left", "middle_left", "front_left"]
         joint_angles = []
         for leg_idx, label in enumerate(labels):
-          # leg_angles = [self.robot_interface.robot_state.joint_states[leg_idx*3+0].feedback_angle_mrads / 1000.0,
-          #               self.robot_interface.robot_state.joint_states[leg_idx*3+1].feedback_angle_mrads / 1000.0,
-          #               self.robot_interface.robot_state.joint_states[leg_idx*3+2].feedback_angle_mrads / 1000.0]
-          leg_angles = [0.0, 0.0, 0.0]
-          leg_angles[2] = self.robot_interface.robot_state.joint_states[2].feedback_angle_mrads / 1000.0
+          leg_angles = [self.robot_interface.robot_state.joint_states[leg_idx*3+0].feedback_angle_mrads / 1000.0,
+                        self.robot_interface.robot_state.joint_states[leg_idx*3+1].feedback_angle_mrads / 1000.0,
+                        self.robot_interface.robot_state.joint_states[leg_idx*3+2].feedback_angle_mrads / 1000.0]
+          # leg_angles = [0.0, 0.0, 0.0]
+          # leg_angles[2] = self.robot_interface.robot_state.joint_states[2].feedback_angle_mrads / 1000.0
           # print(self.robot_interface.robot_state)
           # print(dir(self.robot_interface.robot_state))
           joint_angles.extend(leg_angles)
