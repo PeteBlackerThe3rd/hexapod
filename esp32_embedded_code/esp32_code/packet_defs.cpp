@@ -24,5 +24,15 @@ BasePacketPtr BasePacket::deserialise(Buffer& buffer)
       if (buffer.size() == TCManualJointPositionPacket::expectedSize(buffer))
         return BasePacketPtr(new TCManualJointPositionPacket(buffer));
       throw InvalidPacketLength("Buffer length invalid for TCManualJointPositionPacket");
+
+    case TCWriteRobotConfig::packetId:
+      if (buffer.size() == TCWriteRobotConfig::expectedSize(buffer))
+        return BasePacketPtr(new TCWriteRobotConfig(buffer));
+      throw InvalidPacketLength("Buffer length invalid for TCWriteRobotConfig");
+
+    case TCReadRobotConfig::packetId:
+      if (buffer.size() == TCReadRobotConfig::expectedSize(buffer))
+        return BasePacketPtr(new TCReadRobotConfig());
+      throw InvalidPacketLength("Buffer length invalid for TCReadRobotConfig");
   }
 };

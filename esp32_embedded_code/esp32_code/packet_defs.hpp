@@ -7,6 +7,7 @@ Packet defintions used by Hexapod_V1 (Need to think of a better name at some poi
 #define __PACKET_DEFS_HPP__
 #include <memory>
 #include <string>
+#include <string.h>
 #include "buffer.hpp"
 
 class BasePacket;
@@ -69,6 +70,43 @@ public:
   static constexpr uint8_t packetId = 0x10;
 };
 
+class TCWriteRobotConfig : public BasePacket
+{
+public:
+  TCWriteRobotConfig(Buffer& buffer) {
+    strncpy(description, (char*)&buffer[0], 30);
+    memcpy(jointFeedbackMins, &buffer[30], 18 * sizeof(uint16_t));
+    memcpy(jointFeedbackMaxs, &buffer[30 + 18 * sizeof(uint16_t)], 18 * sizeof(uint16_t));
+  };
+  uint8_t getId() {  };
+  static size_t expectedSize(Buffer& buffer) { return 5 + 30 + (18 * 4); };
+  std::string toString() { return "TCWriteRobotConfig"; };  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    // Not implemented because this will never be generated on board.
+    addHeader(packetBuffer, TCId, packetId);
+    return packetBuffer;
+  };
+  static constexpr uint8_t packetId = 0xA1;
+
+  char description[30];
+  uint16_t jointFeedbackMins[18];
+  uint16_t jointFeedbackMaxs[18];
+};
+
+class TCReadRobotConfig : public BasePacket
+{
+public:
+  uint8_t getId() { return packetId; };
+  static size_t expectedSize(Buffer& buffer) { return 5; };
+  std::string toString() { return "TCReadRobotConfig"; };
+  BufferPtr serialise() {
+    BufferPtr packetBuffer(new Buffer);
+    addHeader(packetBuffer, TMId, packetId);
+    return packetBuffer;
+  };
+  static constexpr uint8_t packetId = 0xA2;
+};
+
 class TCManualJointPositionPacket : public BasePacket
 {
 public:
@@ -128,10 +166,10 @@ public:
   TMHouseKeepingPacket(uint16_t sequenceId) {
     this->sequenceId = sequenceId;
     socketConnectionCount = 0;
-    motorsOn = 0;
+    flags = 0;
     batteryVoltage100thsVolt = 0;
   };
-  static size_t expectedSize(Buffer& buffer) { return 11; };
+  static size_t expectedSize(Buffer& buffer) { return 14; };
   std::string toString() { return "TMHouseKeepingPacket"; };
   BufferPtr serialise() {
     BufferPtr packetBuffer(new Buffer);
@@ -139,7 +177,10 @@ public:
     packetBuffer->push_back(sequenceId & 0xff);
     packetBuffer->push_back(sequenceId >> 8);
     packetBuffer->push_back(socketConnectionCount);
-    packetBuffer->push_back(motorsOn);
+    packetBuffer->push_back(flags & 0xff);
+    packetBuffer->push_back((flags >> 8) & 0xff);
+    packetBuffer->push_back((flags >> 16) & 0xff);
+    packetBuffer->push_back((flags >> 24) & 0xff);
     packetBuffer->push_back(batteryVoltage100thsVolt & 0xff);
     packetBuffer->push_back(batteryVoltage100thsVolt >> 8);
 
@@ -150,7 +191,7 @@ public:
 
   uint16_t sequenceId;
   uint8_t socketConnectionCount;
-  uint8_t motorsOn;
+  uint32_t flags;
   uint16_t batteryVoltage100thsVolt;
 };
 
