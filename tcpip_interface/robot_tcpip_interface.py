@@ -72,7 +72,7 @@ class RobotTCPIPInterface:
               print(decoded_packet)
 
             if isinstance(decoded_packet, TMRobotStatePacket):
-              print(decoded_packet)
+              # print(decoded_packet)
               self.robot_state_mutex.acquire()
               self.robot_state = decoded_packet
               self.robot_state_mutex.release()

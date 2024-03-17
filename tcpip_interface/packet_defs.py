@@ -127,17 +127,22 @@ class TMHouseKeepingPacket(BasePacket):
 
   PACKET_ID = 0x12
 
+  FLAG_LABELS = ["Motors On", "nvs Init Failure", "No Calibration Loaded"]
+
   def __init__(self):
     self.sequence_id = 0
     self.socket_connection_conunt = 0
-    self.motors_on = 0
+    self.flags = [False] * 32
     self.voltage100thVolt = 0
 
   def __str__(self):
     desc = "House Keeping Packet: "
     desc += "SeqId: %d " % self.sequence_id
     desc += "Connections: %d " % self.socket_connection_conunt
-    desc += "Motors On " if self.motors_on == 1 else "Motors Off "
+    desc += "Flags: \n"
+    for idx, label in enumerate(self.FLAG_LABELS):
+      desc += "  [%s] %s\n" % (label, self.flags[idx])
+    # desc += "Motors On " if self.motors_on == 1 else "Motors Off "
     desc += "Battery Voltage %.2f v" % (self.voltage100thVolt * 0.01)
     return desc
 
@@ -146,19 +151,28 @@ class TMHouseKeepingPacket(BasePacket):
     return direction == cls.TM_ID and packet_id == cls.PACKET_ID
 
   def serialise(self):
+    flags_value = 0
+    for idx, flag in enumerate(self.flags):
+      if flag:
+        flags_value = flags_value | (0x1 << idx)
     return self.serialise_header(self.TC_ID, self.PACKET_ID,
                                  struct.pack("<HBBH",
                                              self.sequence_id,
                                              self.socket_connection_conunt,
-                                             self.motors_on,
+                                             flags_value,
                                              self.voltage100thVolt))
 
   @classmethod
   def deserialise(cls, buffer):
-    if len(buffer) == 6:
+    if len(buffer) == 9:
       hk_packet = TMHouseKeepingPacket()
-      hk_packet.sequence_id, hk_packet.socket_connection_conunt, hk_packet.motors_on, hk_packet.voltage100thVolt = \
-        struct.unpack("<HBBH", buffer)
+      hk_packet.sequence_id, hk_packet.socket_connection_count, flags_value, hk_packet.voltage100thVolt = \
+        struct.unpack("<HBIH", buffer)
+
+      print("Decoding flags from 0x%032X\n" % flags_value)
+      for idx in range(32):
+        hk_packet.flags[idx] = (flags_value >> idx) & 0x1 == 0x1
+
       return hk_packet
     else:
       print("Failed to deserialise House Keeping TM, payload not 6 bytes in length")

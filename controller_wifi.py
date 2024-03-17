@@ -201,7 +201,6 @@ class MainWindow(wx.Frame):
     animation_speed = 10
 
     if self.view_mode == ViewMode.Static:
-      print("Static update")
       self.canvas.body_frame_velocity_preview = []
       self.frames = copy.copy(self.base_frames)
 

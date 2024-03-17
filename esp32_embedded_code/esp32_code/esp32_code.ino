@@ -20,6 +20,10 @@ void setup()
   commsThread = new CommsThread;
   robotHWInterface = new RobotHWInterface;
   robotConfig = new RobotConfig(robotHWInterface);
+
+  //robotConfig->writeStoredConfig();
+
+  robotConfig->readStoredConfig();
 }
 
 void loop()
@@ -60,11 +64,16 @@ void loop()
       hkPacket->socketConnectionCount = 5;
 
       hkPacket->flags = 0;
-      hkPacket->flags |= static_cast<uint32_t>(robotHWInterface->motorState);
-      if (robotConfig->getNVSFlashInitialised())
+      if (robotHWInterface->motorState == RobotHWInterface::MotorState::On)
+        hkPacket->flags |= 0x1;
+      if (!robotConfig->getNVSFlashInitialised())
         hkPacket->flags |= 0x2;
-      if (robotConfig->getConfigurationLoaded())
+      if (!robotConfig->getConfigurationLoaded())
         hkPacket->flags |= 0x4;
+
+      // Serial.print("Sending flags: 0x");
+      // Serial.print(hkPacket->flags, HEX);
+      // Serial.print("\n");
 
       hkPacket->batteryVoltage100thsVolt = robotHWInterface->jointStates[0].rawFeedback; 
 

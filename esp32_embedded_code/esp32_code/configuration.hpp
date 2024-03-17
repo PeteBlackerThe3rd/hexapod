@@ -21,6 +21,8 @@ public:
     configurationLoaded = false;
     esp_err_t initRes = nvs_flash_init();
 
+    strcpy(description, "Robot description new value.");
+
     if (initRes == ESP_OK) {
       Serial.println("nvs_flash_init returned okay.");
       nvsFlashInitialised = true;
@@ -57,6 +59,18 @@ public:
     if (openRes != ESP_OK) {
       Serial.print("nvs_open failed with error code [");
       Serial.print(openRes);
+      Serial.print(" - ");
+      switch(openRes) {
+        case ESP_FAIL: Serial.print("ESP_FAIL"); break;
+        case ESP_ERR_NVS_NOT_INITIALIZED: Serial.print("ESP_ERR_NVS_NOT_INITIALIZED"); break;
+        case ESP_ERR_NVS_PART_NOT_FOUND: Serial.print("ESP_ERR_NVS_PART_NOT_FOUND"); break;
+        case ESP_ERR_NVS_NOT_FOUND: Serial.print("ESP_ERR_NVS_NOT_FOUND"); break;
+        case ESP_ERR_NVS_INVALID_NAME: Serial.print("ESP_ERR_NVS_INVALID_NAME"); break;
+        case ESP_ERR_NO_MEM: Serial.print("ESP_ERR_NO_MEM"); break;
+        case ESP_ERR_NVS_NOT_ENOUGH_SPACE: Serial.print("ESP_ERR_NVS_NOT_ENOUGH_SPACE"); break;
+        //case ESP_ERR_NOT_ALLOWED: Serial.print("ESP_ERR_NOT_ALLOWED"); break;
+        case ESP_ERR_INVALID_ARG: Serial.print("ESP_ERR_INVALID_ARG"); break;
+      }
       Serial.println("].");
       return false;
     }
@@ -75,6 +89,11 @@ public:
       Serial.print(labelReadRes);
       Serial.println("].");
       readOkay = false;
+    }
+    else {
+      Serial.print("Read description from nvs: ");
+      Serial.print(tempDescription);
+      Serial.println("");
     }
 
     void nvs_close(nvs_handle_t nvsHandle);
@@ -105,7 +124,7 @@ public:
 
     bool writeOkay = true;
 
-    // attempt to read robot description 
+    // attempt to write robot description 
     esp_err_t labelWriteRes = nvs_set_str(nvsHandle, "Description", description);
     if (labelWriteRes != ESP_OK) {
       Serial.print("writing robot description string failed with error code [");

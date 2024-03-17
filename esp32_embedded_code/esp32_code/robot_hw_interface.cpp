@@ -46,7 +46,7 @@ void RobotHWInterface::readJointStates()
     }
   }
 
-  for (int i=0; i<3; ++i) {
+  /*for (int i=0; i<3; ++i) {
     Serial.print("Joint [");
     Serial.print(i);
     Serial.print("] feedback range [");
@@ -54,7 +54,7 @@ void RobotHWInterface::readJointStates()
     Serial.print(" - ");
     Serial.print(joint_feedback_maxs[i]);
     Serial.println("]");
-  }
+  }*/
 
   
   jointStates[0].feedbackAngle_mrads = (-jointStates[0].rawFeedback * feedbackAngleCoeff) + 1570;
@@ -64,14 +64,14 @@ void RobotHWInterface::readJointStates()
       jointStates[1].feedbackAngle_mrads = 0;
     else {
       float ratio = (jointStates[i].rawFeedback - joint_feedback_mins[i]) / (float)(joint_feedback_maxs[i] - joint_feedback_mins[i]);
-      Serial.print("Joint [");
-      Serial.print(i);
-      Serial.print("] ratio: ");
-      Serial.print(ratio);
-      Serial.print(" angle:");
+      // Serial.print("Joint [");
+      // Serial.print(i);
+      // Serial.print("] ratio: ");
+      // Serial.print(ratio);
+      // Serial.print(" angle:");
       float angle = ((max_endstop_angles[i] - min_endstop_angles[i]) * ratio) + min_endstop_angles[i];
-      Serial.println(angle);
-      jointStates[i].feedbackAngle_mrads = angle * 17.45329f;
+      //Serial.println(angle);
+      // jointStates[i].feedbackAngle_mrads = angle * 17.45329f;
       //jointStates[1].feedbackAngle_mrads = -jointStates[1].rawFeedback * feedbackAngleCoeff;
     }
   }
