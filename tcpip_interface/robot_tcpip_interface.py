@@ -2,6 +2,7 @@ import socket
 import threading
 from .stream_packetiser import StreamPacketiser
 from .packet_defs import *
+import wx
 
 
 class RobotTCPIPInterface:
@@ -9,14 +10,19 @@ class RobotTCPIPInterface:
   HOST = "192.168.4.1"  # The server's hostname or IP address
   PORT = 16523  # The port used by the server
 
-  def __init__(self):
-    # echo-client.py
+  MODE_STANDBY = 1
+  MODE_CALIBRATION = 2
+  MODE_MANUAL = 3
+  MODE_LOOK = 4
+  MODE_WALK = 5
 
+  def __init__(self, main_window):
     self.packetiser = StreamPacketiser()
     self.connected = False
     self.socket = None
+    self.main_window = main_window
 
-    self.decoder_thread = threading.Thread(target=self.decoder_thread_entry)
+    self.decoder_thread = None
     self.decoder_shutdown = threading.Event()
 
     self.robot_state = None
@@ -28,6 +34,7 @@ class RobotTCPIPInterface:
     self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.socket.connect((self.HOST, self.PORT))
     self.socket.settimeout(0.1)
+    self.decoder_thread = threading.Thread(target=self.decoder_thread_entry)
     self.decoder_thread.start()
 
     self.send_packet(TCAreYouAlivePacket())
@@ -35,6 +42,10 @@ class RobotTCPIPInterface:
 
     # print(f"Received {data!r}")
     self.connected = True
+
+  def disconnect(self):
+    self.decoder_shutdown.set()
+    self.decoder_thread.join()
 
   def send_packet(self, packet):
     serialised_packet = packet.serialise()
@@ -70,6 +81,7 @@ class RobotTCPIPInterface:
 
             if isinstance(decoded_packet, TMHouseKeepingPacket):
               print(decoded_packet)
+              wx.CallAfter(self.main_window.update_robot_mode, self.MODE_STANDBY)
 
             if isinstance(decoded_packet, TMRobotStatePacket):
               # print(decoded_packet)
@@ -86,11 +98,16 @@ class RobotTCPIPInterface:
 
       except socket.timeout:
         pass
+      
+    self.decoder_shutdown.clear()
+    self.connected = False
+    self.socket.close()
+    wx.CallAfter(self.main_window.set_disconnected)
 
   def is_connected(self):
     return self.connected
 
-  def disconnect(self):
-    if not self.connected:
-      print("Warning called disconnect on an already disconnected TCPIP Interface")
-    self.socket.close()
+  # def disconnect(self):
+  #   if not self.connected:
+  #     print("Warning called disconnect on an already disconnected TCPIP Interface")
+  #   self.socket.close()

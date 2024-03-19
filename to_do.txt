@@ -23,8 +23,10 @@
 [ ] Clean-up robot connection GUI area and add basic HK view and TM counting
      Uptime, Batt voltage, mode, motor status.
 [ ] Add calibration save to eeprom telecommand
-[ ] Add load calibration on bootup
+[#] Add load calibration on bootup
 [ ] Add re-load calibration from eeprom telecommand
+[ ] Add read calibration TC
+[ ] Add store calibration TC
 
   Electronics
 ---------------

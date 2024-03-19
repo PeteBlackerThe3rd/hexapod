@@ -89,7 +89,7 @@ class MainWindow(wx.Frame):
     window_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.SetSizer(window_sizer)
 
-    self.robot_interface = RobotTCPIPInterface()
+    self.robot_interface = RobotTCPIPInterface(self)
     self.game_pad = GamePad()
     self.kin = Kin()
     self.dynamic_gait = DynamicGait(self.kin)
@@ -114,11 +114,29 @@ class MainWindow(wx.Frame):
     self.side_bar_sizer = wx.BoxSizer(wx.VERTICAL)
     window_sizer.Add(self.side_bar_sizer)
 
-    self.connection_state_text = wx.StaticText(self, wx.ID_ANY, "Robot Not Connected")
-    self.side_bar_sizer.Add(self.connection_state_text, 1, wx.CENTER|wx.TOP, 5)
-    self.connect_button = wx.Button(self, wx.ID_ANY, label="Connect Robot")
+    connection_frame = wx.Panel(parent=self, id=wx.ID_ANY, size=(200, -1))
+    connection_frame.SetBackgroundColour(wx.BLACK)
+    self.side_bar_sizer.Add(connection_frame, 2)
+
+    connection_sizer = wx.BoxSizer(wx.VERTICAL)
+    connection_frame.SetSizer(connection_sizer)
+
+    self.connection_state_text = wx.StaticText(connection_frame, wx.ID_ANY, "Not Connected")
+    self.connection_state_text.SetForegroundColour(wx.RED)
+    connection_sizer.Add(self.connection_state_text, 1, wx.CENTER | wx.TOP, 5)
+    self.connection_desc_text = wx.StaticText(connection_frame, wx.ID_ANY, "Name: ---")
+    self.connection_desc_text.SetForegroundColour(wx.Colour(128, 128, 128))
+    connection_sizer.Add(self.connection_desc_text, 1, wx.LEFT | wx.RIGHT, 10)
+    self.connection_version_text = wx.StaticText(connection_frame, wx.ID_ANY, "FW V: ---")
+    self.connection_version_text.SetForegroundColour(wx.Colour(128, 128, 128))
+    connection_sizer.Add(self.connection_version_text, 1, wx.LEFT | wx.RIGHT, 10)
+    self.connection_mode_text = wx.StaticText(connection_frame, wx.ID_ANY, "Mode: ---")
+    self.connection_mode_text.SetForegroundColour(wx.Colour(128, 128, 128))
+    connection_sizer.Add(self.connection_mode_text, 1, wx.LEFT | wx.RIGHT, 10)
+
+    self.connect_button = wx.Button(connection_frame, wx.ID_ANY, label="Connect Robot")
     self.connect_button.Bind(wx.EVT_BUTTON, self.on_connect_robot)
-    self.side_bar_sizer.Add(self.connect_button, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
+    connection_sizer.Add(self.connect_button, 1, wx.CENTER|wx.TOP|wx.BOTTOM, 5)
 
     self.side_bar_sizer.Add(wx.StaticLine(self, wx.ID_ANY, size=wx.Size(200, -1), style=wx.LI_HORIZONTAL))
 
@@ -174,14 +192,41 @@ class MainWindow(wx.Frame):
     self.Close()
 
   def on_connect_robot(self, _):
-    try:
-      self.robot_interface.connect()
-      if self.robot_interface.is_connected():
-        self.connection_state_text.SetLabel("Robot connected")
-      else:
-        self.connection_state_text.SetLabel("Could not detect robot")
-    except RobotConnectionFailed as e:
-      self.connection_state_text.SetLabel(str(e))
+    if not self.robot_interface.is_connected():
+      try:
+        print("Connecting robot")
+        self.robot_interface.connect()
+        if self.robot_interface.is_connected():
+          self.connection_state_text.SetLabel("Connected")
+          self.connection_state_text.SetForegroundColour(wx.GREEN)
+          self.connect_button.SetLabel("Disconnect")
+        else:
+          self.connection_state_text.SetLabel("Connection Failed")
+          self.connection_state_text.SetForegroundColour(wx.RED)
+      except RobotConnectionFailed as e:
+        self.connection_state_text.SetLabel(str(e))
+    else:
+      self.robot_interface.disconnect()
+
+  def update_robot_mode(self, new_mode):
+    if new_mode == RobotTCPIPInterface.MODE_STANDBY:
+      self.connection_mode_text.SetLabel("Mode: Standby")
+      self.connection_mode_text.SetForegroundColour(wx.GREEN)
+    elif new_mode == RobotTCPIPInterface.MODE_CALIBRATION:
+      self.connection_mode_text.SetLabel("Mode: Calibration")
+      self.connection_mode_text.SetForegroundColour(wx.YELLOW)
+
+  def set_disconnected(self):
+
+    self.connect_button.SetLabel("Connect")
+    self.connection_state_text.SetLabel("Not Connected")
+    self.connection_state_text.SetForegroundColour(wx.RED)
+    self.connection_desc_text.SetLabel("Name: ---")
+    self.connection_desc_text.SetForegroundColour(wx.Colour(128, 128, 128))
+    self.connection_version_text.SetLabel("FW V: ---")
+    self.connection_version_text.SetForegroundColour(wx.Colour(128, 128, 128))
+    self.connection_mode_text.SetLabel("Mode: ---")
+    self.connection_mode_text.SetForegroundColour(wx.Colour(128, 128, 128))
 
   def test_servo_change(self, event):
     if self.robot_interface.is_connected():
